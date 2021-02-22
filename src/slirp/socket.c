@@ -14,6 +14,8 @@
 #include <sys/filio.h>
 #endif
 
+#include "nfs/VDNS.h"
+
 #ifdef _WIN32
 #define IS_EAGAIN(e) ((e) == WSAEINTR || (e) == EAGAIN)
 #else
@@ -515,7 +517,7 @@ sosendto(so, m)
 	  /* It's an alias */
 	  switch(ntohl(so->so_faddr.s_addr) & 0xff) {
 	  case CTL_DNS:
-	    addr.sin_addr = dns_addr;
+        addr.sin_addr = nfsd_vdns_match(m) ? loopback_addr : dns_addr;
 	    break;
 	  case CTL_ALIAS:
 	  default:

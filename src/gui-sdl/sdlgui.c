@@ -19,6 +19,8 @@ const char SDLGui_fileid[] = "Previous sdlgui.c : " __DATE__ " " __TIME__;
 #include "font5x8.h"
 #include "font10x16.h"
 
+int sdlgui_fontheight = 0;
+int sdlgui_fontwidth = 0;
 
 static SDL_Surface *pSdlGuiScrn;            /* Pointer to the actual main SDL screen surface */
 static SDL_Surface *pSmallFontGfx = NULL;   /* The small font graphics */
@@ -716,8 +718,7 @@ int SDLGui_DoDialog(SGOBJ *dlg, SDL_Event *pEventOut)
 	bgrect.h = dlgrect.h;
 
 	/* Save background */
-	pBgSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, dlgrect.w, dlgrect.h, pSdlGuiScrn->format->BitsPerPixel,
-	                                  pSdlGuiScrn->format->Rmask, pSdlGuiScrn->format->Gmask, pSdlGuiScrn->format->Bmask, pSdlGuiScrn->format->Amask);
+	pBgSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, dlgrect.w, dlgrect.h, pSdlGuiScrn->format->BitsPerPixel, 0, 0, 0, 0);
 	if (pSdlGuiScrn->format->palette != NULL)
 	{
 		SDL_SetPaletteColors(pBgSurface->format->palette, pSdlGuiScrn->format->palette->colors, 0, pSdlGuiScrn->format->palette->ncolors-1);
@@ -891,6 +892,9 @@ int SDLGui_DoDialog(SGOBJ *dlg, SDL_Event *pEventOut)
 						SDLGui_DrawPopupButton(dlg, obj);
                             SDL_UpdateRect(pSdlGuiScrn, (dlg[0].x+dlg[obj].x)*sdlgui_fontwidth-2, (dlg[0].y+dlg[obj].y)*sdlgui_fontheight-2,
  						               dlg[obj].w*sdlgui_fontwidth+4, dlg[obj].h*sdlgui_fontheight+4);
+						retbutton=obj;
+						break;
+					 case SGHIDDEN:
 						retbutton=obj;
 						break;
 					}

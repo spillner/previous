@@ -1,6 +1,9 @@
 NOTE: This procedure has been tested using NeXTstep 1.0a and 3.3
       as client and Mac OS X v10.9 as server.
 
+      This procedure is only valid when using SLiRP as networking
+      interface.
+
       For this procedure to work networking must be setup first
       (see networking.howto.txt for details).
       To edit files inside /etc you need super user privileges.

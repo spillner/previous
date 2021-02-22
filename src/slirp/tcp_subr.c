@@ -42,6 +42,9 @@
 #include <stdlib.h>
 #include <slirp.h>
 
+#include "nfs/nfsd.h"
+#include "nfs/VDNS.h"
+
 /* patchable/settable parameters for tcp */
 int 	tcp_mssdflt = TCP_MSS;
 int 	tcp_rttdflt = TCPTV_SRTTDFLT / PR_SLOWHZ;
@@ -394,25 +397,35 @@ int tcp_fconnect(struct socket *so)
       /* It's an alias */
       switch(ntohl(so->so_faddr.s_addr) & 0xff) {
       case CTL_DNS:
-	addr.sin_addr = dns_addr;
-	break;
-      case CTL_ALIAS:
+        addr.sin_addr = dns_addr;
+        break;
+    case CTL_ALIAS:
       default:
-	addr.sin_addr = loopback_addr;
-	break;
+        addr.sin_addr = loopback_addr;
+        break;
       }
     } else
-      addr.sin_addr = so->so_faddr;
-    addr.sin_port = so->so_fport;
+        addr.sin_addr = so->so_faddr;
+      
+      addr.sin_port = so->so_fport;
+      if(nfsd_match_addr(ntohl(so->so_faddr.s_addr))) {
+          switch(ntohs(so->so_fport)) {
+              case PORT_PORTMAP:
+                  addr.sin_port = htons(nfsd_ports.tcp.portmap);
+                  break;
+              case PORT_NFS:
+                  addr.sin_port = htons(nfsd_ports.tcp.nfs);
+                  break;
+          }
+      }
 
 	char addrstr[INET_ADDRSTRLEN];
-    DEBUG_MISC((dfd, " connect()ing, addr.sin_port=%d, "
-		"addr.sin_addr.s_addr=%.16s\n", 
-		ntohs(addr.sin_port), inet_ntop(AF_INET, &addr.sin_addr,
-			addrstr, sizeof(addrstr))));
     /* We don't care what port we get */
     ret = connect(s,(struct sockaddr *)&addr,sizeof (addr));
-    
+    if(ret < 0)
+        printf("[SLIRP:TCP] connect()ing, addr.sin_port=%d, addr.sin_addr.s_addr=%.16s res=%d,err=%s\n",
+                  ntohs(addr.sin_port), inet_ntop(AF_INET, &addr.sin_addr, addrstr, sizeof(addrstr)), ret, strerror(errno));
+
     /*
      * If it's not in progress, it failed, so we just return 0,
      * without clearing SS_NOFDREF

@@ -23,4 +23,11 @@ endif(CMAKE_COMPILER_IS_GNUCC)
 add_library(Slirp
             bootp.c cksum.c if.c ip_icmp.c ip_input.c ip_output.c 
             mbuf.c misc.c sbuf.c slirp.c slirpdebug.c socket.c 
-            tcp_input.c tcp_output.c tcp_subr.c tcp_timer.c tftp.c udp.c)
+            tcp_input.c tcp_output.c tcp_subr.c tcp_timer.c tftp.c udp.c
+
+            nfs/compat.cpp
+            nfs/XDRStream.cpp nfs/Socket.cpp nfs/TCPServerSocket.cpp nfs/UDPServerSocket.cpp
+            nfs/nfsd.cpp nfs/RPCServer.cpp nfs/VDNS.cpp
+            nfs/RPCProg.cpp nfs/PortmapProg.cpp nfs/MountProg.cpp nfs/NFSProg.cpp nfs/NFS2Prog.cpp nfs/BootparamProg.cpp
+            nfs/FileTableNFSD.cpp ../ditool/FileTable.cpp 
+			)

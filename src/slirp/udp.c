@@ -41,6 +41,8 @@
 #include <stdlib.h>
 #include <slirp.h>
 #include "ip_icmp.h"
+#include "nfs/nfsd.h"
+#include "nfs/VDNS.h"
 
 struct udpstat udpstat;
 
@@ -111,7 +113,7 @@ udp_input(m, iphlen)
 	if (ip->ip_len != len) {
 		if (len > ip->ip_len) {
 			udpstat.udps_badlen++;
-			goto bad;
+			goto done;
 		}
 		m_adj(m, len - ip->ip_len);
 		ip->ip_len = len;
@@ -137,25 +139,54 @@ udp_input(m, iphlen)
 	   */
 	  if(cksum(m, len + sizeof(struct ip))) {
 	    udpstat.udps_badsum++;
-	    goto bad;
+	    goto done;
 	  }
 	}
+    
+    int dport = ntohs(uh->uh_dport);
 
-        /*
-         *  handle DHCP/BOOTP
-         */
-        if (ntohs(uh->uh_dport) == BOOTP_SERVER) {
+    if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
+        switch(dport) {
+            case PORT_PORTMAP:
+                // map port & address for portmap
+                uh->uh_dport = htons(nfsd_ports.udp.portmap);
+                ip->ip_dst   = loopback_addr;
+                break;
+            case PORT_NFS:
+                // map port & address for NFS
+                uh->uh_dport = htons(nfsd_ports.udp.nfs);
+                ip->ip_dst   = loopback_addr;
+                break;
+            default:
+                // map port & address for mountd
+                if(dport == nfsd_ports.udp.mount)
+                    ip->ip_dst   = loopback_addr;
+                break;
+        }
+    } else if(nfsd_vdns_match(m)) {
+        switch(dport) {
+            case PORT_DNS:
+                // map port & address for virtual DNS
+                uh->uh_dport = htons(nfsd_ports.udp.dns);
+                ip->ip_dst   = loopback_addr;
+                break;
+            default:
+                break;
+        }
+    }
+    
+    switch(dport) {
+        case BOOTP_SERVER:
             bootp_input(m);
-            goto bad;
-        }
-
-        /*
-         *  handle TFTP
-         */
-        if (ntohs(uh->uh_dport) == TFTP_SERVER) {
+            goto done;
+            break;
+        case TFTP_SERVER:
             tftp_input(m);
-            goto bad;
-        }
+            goto done;
+            break;
+        default:
+            break;
+    }
 
 	/*
 	 * Locate pcb for datagram.
@@ -187,12 +218,12 @@ udp_input(m, iphlen)
 	   * If there's no socket for this packet,
 	   * create one
 	   */
-	  if ((so = socreate()) == NULL) goto bad;
+	  if ((so = socreate()) == NULL) goto done;
 	  if(udp_attach(so) == -1) {
 	    DEBUG_MISC((dfd," udp_attach errno = %d-%s\n", 
 			errno,strerror(errno)));
 	    sofree(so);
-	    goto bad;
+	    goto done;
 	  }
 	  
 	  /*
@@ -241,7 +272,9 @@ udp_input(m, iphlen)
 	so->so_m=m;         /* ICMP backup */
 
 	return;
-bad:
+    
+    
+done:
 	m_freem(m);
 	/* if (opts) m_freem(opts); */
 	return;
@@ -272,15 +305,15 @@ int udp_output2(struct socket *so, struct mbuf *m,
 	 */
 	ui = mtod(m, struct udpiphdr *);
     memset(&ui->ui_i.ih_mbuf, 0 , sizeof(struct mbuf_ptr));
-	ui->ui_x1 = 0;
-	ui->ui_pr = IPPROTO_UDP;
-	ui->ui_len = htons((u_short) (m->m_len - sizeof(struct ip))); /* + sizeof (struct udphdr)); */
+	ui->ui_x1    = 0;
+	ui->ui_pr    = IPPROTO_UDP;
+	ui->ui_len   = htons((u_short) (m->m_len - sizeof(struct ip))); /* + sizeof (struct udphdr)); */
 	/* XXXXX Check for from-one-location sockets, or from-any-location sockets */
-        ui->ui_src = saddr->sin_addr;
-	ui->ui_dst = daddr->sin_addr;
+    ui->ui_src   = saddr->sin_addr;
+	ui->ui_dst   = daddr->sin_addr;
 	ui->ui_sport = saddr->sin_port;
 	ui->ui_dport = daddr->sin_port;
-	ui->ui_ulen = ui->ui_len;
+	ui->ui_ulen  = ui->ui_len;
 
 	/*
 	 * Stuff checksum and output datagram.
@@ -309,11 +342,27 @@ int udp_output(struct socket *so, struct mbuf *m,
     struct sockaddr_in saddr, daddr;
 
     saddr = *addr;
-    if ((so->so_faddr.s_addr & htonl(0xffffff00)) == special_addr.s_addr) {
+    if ((so->so_faddr.s_addr & htonl(CTL_NET_MASK)) == special_addr.s_addr) {
         saddr.sin_addr.s_addr = so->so_faddr.s_addr;
-        if ((so->so_faddr.s_addr & htonl(0x000000ff)) == htonl(0xff))
+        if ((so->so_faddr.s_addr & htonl(~CTL_NET_MASK)) == htonl(~CTL_NET_MASK))
             saddr.sin_addr.s_addr = alias_addr.s_addr;
     }
+    
+    if(so->so_faddr.s_addr == loopback_addr.s_addr) {
+        if(ntohs(so->so_fport) == nfsd_ports.udp.portmap) {
+            saddr.sin_port        = htons(PORT_PORTMAP);
+            saddr.sin_addr.s_addr = special_addr.s_addr | htonl(CTL_NFSD);
+        } else if(ntohs(so->so_fport) == nfsd_ports.udp.nfs) {
+            saddr.sin_port        = htons(PORT_NFS);
+            saddr.sin_addr.s_addr = special_addr.s_addr | htonl(CTL_NFSD);
+        } else if(ntohs(so->so_fport) == nfsd_ports.udp.mount) {
+            saddr.sin_addr.s_addr = special_addr.s_addr | htonl(CTL_NFSD);
+        } else if(ntohs(so->so_fport) == nfsd_ports.udp.dns) {
+            saddr.sin_port        = htons(PORT_DNS);
+            saddr.sin_addr.s_addr = special_addr.s_addr | htonl(CTL_DNS);
+        }
+    }
+    
     daddr.sin_addr = so->so_laddr;
     daddr.sin_port = so->so_lport;
     

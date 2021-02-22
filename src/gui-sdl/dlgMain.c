@@ -13,29 +13,29 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c : " __DATE__ " " __TIME__;
 #include "dialog.h"
 #include "sdlgui.h"
 #include "screen.h"
-#include "dimension.h"
+#include "dimension.hpp"
 
 
-#define MAINDLG_ABOUT    0
-#define MAINDLG_SYSTEM   2
-#define MAINDLG_ROM      3
-#define MAINDLG_GRAPH    4
-#define MAINDLG_ENET     5
-#define MAINDLG_BOOT     6
-#define MAINDLG_SCSI     7
-#define MAINDLG_MO       8
-#define MAINDLG_FLOPPY   9
-#define MAINDLG_KEYBD    10
-#define MAINDLG_MOUSE    11
-#define MAINDLG_SOUND    12
-#define MAINDLG_PRINTER  13
-#define MAINDLG_LOADCFG  14
-#define MAINDLG_SAVECFG  15
-#define MAINDLG_RESET    16
-#define MAINDLG_SHOW     17
-#define MAINDLG_OK       18
-#define MAINDLG_QUIT     19
-#define MAINDLG_CANCEL   20
+#define MAINDLG_ABOUT    2
+#define MAINDLG_SYSTEM   3
+#define MAINDLG_ROM      4
+#define MAINDLG_GRAPH    5
+#define MAINDLG_NET      6
+#define MAINDLG_BOOT     7
+#define MAINDLG_SCSI     8
+#define MAINDLG_MO       9
+#define MAINDLG_FLOPPY   10
+#define MAINDLG_KEYBD    11
+#define MAINDLG_MOUSE    12
+#define MAINDLG_SOUND    13
+#define MAINDLG_PRINTER  14
+#define MAINDLG_LOADCFG  15
+#define MAINDLG_SAVECFG  16
+#define MAINDLG_RESET    17
+#define MAINDLG_SHOW     18
+#define MAINDLG_OK       19
+#define MAINDLG_QUIT     20
+#define MAINDLG_CANCEL   21
 
 
 /* The main dialog: */
@@ -43,10 +43,11 @@ static SGOBJ maindlg[] =
 {
 	{ SGBOX, 0, 0, 0,0, 50,19, NULL },
 	{ SGTEXT, 0, 0, 15,1, 20,1, "Previous - Main menu" },
+    { SGHIDDEN, 0, 0, 15,1, 8,1, "Previous" },
 	{ SGBUTTON, 0, 0, 2,4, 13,1, "System" },
 	{ SGBUTTON, 0, 0, 2,6, 13,1, "ROM" },
-	{ SGBUTTON, 0, 0, 2,8, 13,1, "Graphics" },
-	{ SGBUTTON, 0, 0, 2,10, 13,1, "Ethernet" },
+	{ SGBUTTON, 0, 0, 2,8, 13,1, "Display" },
+	{ SGBUTTON, 0, 0, 2,10, 13,1, "Network" },
 	{ SGBUTTON, 0, 0, 17,4, 16,1, "Boot options" },
 	{ SGBUTTON, 0, 0, 17,6, 16,1, "SCSI disks" },
 	{ SGBUTTON, 0, 0, 17,8, 16,1, "MO disks" },
@@ -90,10 +91,12 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 
 	maindlg[MAINDLG_RESET].state &= ~SG_SELECTED;
     
-    if(ConfigureParams.ConfigDialog.bShowConfigDialogAtStartup)
-        maindlg[MAINDLG_SHOW].state |= SG_SELECTED;
-    else
-        maindlg[MAINDLG_SHOW].state &= ~SG_SELECTED;
+    if(ConfigureParams.ConfigDialog.bShowConfigDialogAtStartup) {
+        maindlg[MAINDLG_SHOW].state |= SG_SELECTED;		
+	}
+    else {
+        maindlg[MAINDLG_SHOW].state &= ~SG_SELECTED;		
+	}
 
 	do
 	{
@@ -104,9 +107,9 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 			Dialog_AboutDlg();
 			break;
 		 case MAINDLG_GRAPH:
-			Dialog_DimensionDlg();
+			Dialog_GraphicsDlg();
 			break;
-		 case MAINDLG_ENET:
+		 case MAINDLG_NET:
 			DlgEthernet_Main();
 			break;
 		 case MAINDLG_SCSI:

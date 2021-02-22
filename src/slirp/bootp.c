@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 #include <slirp.h>
+#include <unistd.h>
+#include "ctl.h"
+#include "nfs/nfsd.h"
 
 /* XXX: only DHCP is supported */
 
 #define NB_ADDR 16
-
-#define START_ADDR 15
-
 #define LEASE_TIME (24 * 3600)
 
 typedef struct {
@@ -40,9 +40,12 @@ BOOTPClient bootp_clients[NB_ADDR];
 
 static const uint8_t rfc1533_cookie[] = { RFC1533_COOKIE };
 #if BOOTP_VEND_NEXT
-static const uint8_t magic_next[] = {'N','e','X','T'};
+static const uint8_t magic_next[]  = {'N','e','X','T'};
+static const char    kernel_next[] = "mach";
+static const char    tftp_root[]   = "/private/tftpboot/";
 #endif
 
+static char hostname[_SC_HOST_NAME_MAX];
 
 static BOOTPClient *get_new_addr(struct in_addr *paddr)
 {
@@ -57,7 +60,7 @@ static BOOTPClient *get_new_addr(struct in_addr *paddr)
  found:
     bc = &bootp_clients[i];
     bc->allocated = 1;
-    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + START_ADDR));
+    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + CTL_HOST));
     return bc;
 }
 
@@ -74,7 +77,7 @@ static BOOTPClient *find_addr(struct in_addr *paddr, const uint8_t *macaddr)
  found:
     bc = &bootp_clients[i];
     bc->allocated = 1;
-    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + START_ADDR));
+    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + CTL_HOST));
     return bc;
 }
 
@@ -131,6 +134,8 @@ static void bootp_reply(struct bootp_t *bp)
     int dhcp_msg_type;
     uint8_t *q;
 
+    gethostname(hostname, _SC_HOST_NAME_MAX);
+
     /* extract exact DHCP msg type */
     dhcp_decode(bp->bp_vend, DHCP_OPT_LEN, &dhcp_msg_type);
     
@@ -165,31 +170,37 @@ static void bootp_reply(struct bootp_t *bp)
         }
     }
 
-    saddr.sin_addr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_ALIAS);
-    saddr.sin_port = htons(BOOTP_SERVER);
+    saddr.sin_addr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_NFSD);
+    saddr.sin_port        = htons(BOOTP_SERVER);
+    daddr.sin_port        = htons(BOOTP_CLIENT);
 
-    daddr.sin_port = htons(BOOTP_CLIENT);
-
-    rbp->bp_op = BOOTP_REPLY;
-    rbp->bp_xid = bp->bp_xid;
+    rbp->bp_op    = BOOTP_REPLY;
+    rbp->bp_xid   = bp->bp_xid;
     rbp->bp_htype = 1;
-    rbp->bp_hlen = 6;
+    rbp->bp_hlen  = 6;
     memcpy(rbp->bp_hwaddr, bp->bp_hwaddr, 6);
 
-    rbp->bp_yiaddr = daddr.sin_addr; /* Client IP address */
-    rbp->bp_siaddr = saddr.sin_addr; /* Server IP address */
+    rbp->bp_yiaddr        = daddr.sin_addr; /* Client IP address */
+    rbp->bp_siaddr        = saddr.sin_addr; /* Server IP address */
+    rbp->bp_giaddr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_GATEWAY); /* Gateway IP address */
+    strcpy((char*)rbp->bp_sname, NAME_NFSD); /* Server namne */
 
     q = rbp->bp_vend;
 #if BOOTP_VEND_NEXT
+    char path[TFTP_FILENAME_MAX];
+    if(bp->bp_file[0])
+        sprintf(path, "%s%s", tftp_root, bp->bp_file);
+    else
+        sprintf(path, "%s", kernel_next);
+    memcpy(rbp->bp_file, path, strlen(path)+1);
     memcpy(q, magic_next, 4);
     q += 4;
     *q++ = 1;
     *q++ = 0;
-    *q++ = 0;
-    memset(q, 0, 56);
-    q += 56;
-    *q++ = 0;
+    memset(q, 0, 57);
+    q += 57;
 #else
+    uint32_t val;
     memcpy(q, rfc1533_cookie, 4);
     q += 4;
     if (dhcp_msg_type == DHCPDISCOVER) {
@@ -211,14 +222,14 @@ static void bootp_reply(struct bootp_t *bp)
 
         *q++ = RFC1533_NETMASK;
         *q++ = 4;
-        *q++ = 0xff;
-        *q++ = 0xff;
-        *q++ = 0xff;
-        *q++ = 0x00;
-        
+        val = htonl(CTL_NET_MASK);
+        memcpy(q, &val, 4);
+        q += 4;
+
         *q++ = RFC1533_GATEWAY;
         *q++ = 4;
-        memcpy(q, &saddr.sin_addr, 4);
+        val = htonl(ntohl(special_addr.s_addr) | CTL_GATEWAY);
+        memcpy(q, &val, 4);
         q += 4;
         
         *q++ = RFC1533_DNS;
@@ -233,13 +244,11 @@ static void bootp_reply(struct bootp_t *bp)
         memcpy(q, &val, 4);
         q += 4;
 
-        if (*slirp_hostname) {
-            val = strlen(slirp_hostname);
-            *q++ = RFC1533_HOSTNAME;
-            *q++ = val;
-            memcpy(q, slirp_hostname, val);
-            q += val;
-        }
+        val = strlen(hostname);
+        *q++ = RFC1533_HOSTNAME;
+        *q++ = val;
+        memcpy(q, hostname, val);
+        q += val;
     }
     *q++ = RFC1533_END;
 #endif

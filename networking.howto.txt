@@ -4,6 +4,9 @@ WARNING: Do not start NeXTstep 1.0a and earlier with Ethernet
          on 1.x and 0.x hangs in the boot process. The bugs are
          possibly in NeXTstep itself.
 
+NOTE:    This procedure is only valid when using SLiRP as networking
+         interface.
+
 
 Howto: Setup networking on NeXTstep 0.8 and 0.9:
    FIXME: No procedure yet.

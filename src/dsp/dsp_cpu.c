@@ -8360,7 +8360,7 @@ static void dsp_rol_a(void)
 	newcarry = (dsp_core.registers[DSP_REG_A1]>>23) & 1;
 
 	dsp_core.registers[DSP_REG_A1] <<= 1;
-	dsp_core.registers[DSP_REG_A1] |= newcarry;
+	dsp_core.registers[DSP_REG_A1] |= dsp_core.registers[DSP_REG_SR] & 1;
 	dsp_core.registers[DSP_REG_A1] &= BITMASK(24);
 
 	dsp_core.registers[DSP_REG_SR] &= BITMASK(16)-((1<<DSP_SR_C)|(1<<DSP_SR_N)|(1<<DSP_SR_Z)|(1<<DSP_SR_V));
@@ -8376,7 +8376,7 @@ static void dsp_rol_b(void)
 	newcarry = (dsp_core.registers[DSP_REG_B1]>>23) & 1;
 
 	dsp_core.registers[DSP_REG_B1] <<= 1;
-	dsp_core.registers[DSP_REG_B1] |= newcarry;
+	dsp_core.registers[DSP_REG_B1] |= dsp_core.registers[DSP_REG_SR] & 1;
 	dsp_core.registers[DSP_REG_B1] &= BITMASK(24);
 
 	dsp_core.registers[DSP_REG_SR] &= BITMASK(16)-((1<<DSP_SR_C)|(1<<DSP_SR_N)|(1<<DSP_SR_Z)|(1<<DSP_SR_V));
@@ -8392,7 +8392,7 @@ static void dsp_ror_a(void)
 	newcarry = dsp_core.registers[DSP_REG_A1] & 1;
 
 	dsp_core.registers[DSP_REG_A1] >>= 1;
-	dsp_core.registers[DSP_REG_A1] |= newcarry<<23;
+	dsp_core.registers[DSP_REG_A1] |= (dsp_core.registers[DSP_REG_SR] & 1)<<23;
 
 	dsp_core.registers[DSP_REG_SR] &= BITMASK(16)-((1<<DSP_SR_C)|(1<<DSP_SR_N)|(1<<DSP_SR_Z)|(1<<DSP_SR_V));
 	dsp_core.registers[DSP_REG_SR] |= newcarry;
@@ -8407,7 +8407,7 @@ static void dsp_ror_b(void)
 	newcarry = dsp_core.registers[DSP_REG_B1] & 1;
 
 	dsp_core.registers[DSP_REG_B1] >>= 1;
-	dsp_core.registers[DSP_REG_B1] |= newcarry<<23;
+	dsp_core.registers[DSP_REG_B1] |= (dsp_core.registers[DSP_REG_SR] & 1)<<23;
 
 	dsp_core.registers[DSP_REG_SR] &= BITMASK(16)-((1<<DSP_SR_C)|(1<<DSP_SR_N)|(1<<DSP_SR_Z)|(1<<DSP_SR_V));
 	dsp_core.registers[DSP_REG_SR] |= newcarry;

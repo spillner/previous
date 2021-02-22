@@ -45,14 +45,14 @@ debug_init(file, dbg)
 	}
 }
 
+#if 0
+
 /*
  * Dump a packet in the same format as tcpdump -x
  */
 #ifdef DEBUG
-void
-dump_packet(dat, n)
-	void *dat;
-	int n;
+static void
+dump_packet(void *dat, int n)
 {
 	u_char *pptr = (u_char *)dat;
 	int j,k;
@@ -69,7 +69,6 @@ dump_packet(dat, n)
 }
 #endif
 
-#if 0
 /*
  * Statistic routines
  * 

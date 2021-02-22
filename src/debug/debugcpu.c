@@ -256,7 +256,7 @@ int DebugCpu_DisAsm(int nArgc, char *psArgs[])
 	for (insts = 0; insts < max_insts && disasm_addr < disasm_upper; insts++)
 	{
         DebugCpu_ShowAddressInfo(disasm_addr);
-        Disasm(debugOutput, (uaecptr)disasm_addr, &nextpc, 1, DISASM_ENGINE_UAE);
+        Disasm(debugOutput, (uaecptr)disasm_addr, &nextpc, 1);
 		disasm_addr = nextpc;
 	}
 	fflush(mydebugOutput);
@@ -348,9 +348,9 @@ int DebugCpu_Register(int nArgc, char *psArgs[])
 	/* If no parameter has been given, simply dump all registers */
 	if (nArgc == 1)
 	{
-		uaecptr nextpc;
+		uaecptr nextpc = 0;
 		/* use the UAE function instead */
-		m68k_dumpstate(&nextpc);
+		m68k_dumpstate(&nextpc, nextpc);
 		fflush(debugOutput);
 		return DEBUGGER_CMDDONE;
 	}

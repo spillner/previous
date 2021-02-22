@@ -27,7 +27,6 @@ const char DebugUI_fileid[] = "Hatari debugui.c : " __DATE__ " " __TIME__;
 #include "file.h"
 #include "log.h"
 #include "m68000.h"
-#include "options.h"
 #include "screen.h"
 #include "statusbar.h"
 #include "str.h"
@@ -315,7 +314,7 @@ static int DebugUI_SetOptions(int argc, char *argv[])
 
 	/* get configuration changes */
 	current = ConfigureParams;
-
+#if 0
 	/* Parse and apply options */
 	if (Opt_ParseParameters(argc, (const char * const *)argv))
 	{
@@ -323,6 +322,7 @@ static int DebugUI_SetOptions(int argc, char *argv[])
 		Change_CopyChangedParamsToConfiguration(&current, &ConfigureParams, false);
 	}
 	else
+#endif
 	{
 		ConfigureParams = current;
 	}
@@ -542,7 +542,10 @@ static int DebugUI_ParseCommand(const char *input_orig)
 	retval = debugCommand[i].pFunction(nArgc, psArgs);
 	/* Save commando string if it can be repeated */
 	if (retval == DEBUGGER_CMDCONT)
-		strncpy(sLastCmd, psArgs[0], sizeof(sLastCmd));
+	{
+		strncpy(sLastCmd, psArgs[0], sizeof(sLastCmd) - 1);
+		sLastCmd[sizeof(sLastCmd) - 1] = '\0';
+	}
 	else
 		sLastCmd[0] = '\0';
     free(input);
@@ -779,7 +782,7 @@ static const dbgcommand_t uicommand[] =
 	  "[filename]\n"
 	  "\tRead debugger commands from given file and do them.",
 	  false },
-	{ DebugUI_SetOptions, Opt_MatchOption,
+	{ DebugUI_SetOptions, NULL /* Opt_MatchOption */,
 	  "setopt", "o",
 	  "set Hatari command line and debugger options",
 	  "[<bin|dec|hex>|<command line options>]\n"
@@ -813,8 +816,9 @@ void DebugUI_Init(void)
     const dbgcommand_t *cpucmd;
     int cpucmds;
 
-    if(!(debugOutput))
-        debugOutput = stderr;
+    if(!(debugOutput)){
+        debugOutput = stderr;		
+	} 
         
 	/* already intialized? */
 	if (debugCommands)
@@ -916,9 +920,10 @@ void DebugUI(void)
 	while (cmdret != DEBUGGER_END);
     
     /* free (and ignore) exit command */
-    if (psCmd)
-        free(psCmd);
-
+    if (psCmd) {
+       free(psCmd);		
+	}
+ 
 	Log_SetAlertLevel(alertLevel);
 	DebugUI_SetLogDefault();
 

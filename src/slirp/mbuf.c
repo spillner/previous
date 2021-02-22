@@ -119,7 +119,7 @@ void m_free(struct mbuf *m)
  * the other.. if result is too big for one mbuf, malloc()
  * an M_EXT data segment
  */
-void m_cat(register struct mbuf *m, register struct mbuf *n)
+void m_cat(struct mbuf *m, struct mbuf *n)
 {
 	/*
 	 * If there's no room, realloc

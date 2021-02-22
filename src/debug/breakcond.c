@@ -319,7 +319,7 @@ static int BreakCond_MatchBreakPoints(bc_breakpoint_t *bp, int count, const char
 			}
 			if (bp->options.lock) {
                 DebugCpu_InitSession();
-                DebugDsp_InitSession();
+//              DebugDsp_InitSession();
                 DebugInfo_ShowSessionInfo();
             }
             if (bp->options.filename) {
@@ -1603,6 +1603,6 @@ bool BreakAddr_Command(char *args, bool bForDsp)
 
 	/* on success, show on what instruction it was added */
 		uaecptr dummy;
-		m68k_disasm((uaecptr)addr, &dummy, 1);
+		m68k_disasm((uaecptr)addr, &dummy, dummy, 1);
 	return true;
 }

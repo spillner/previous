@@ -50,6 +50,8 @@
 
 #define DSP_HW_OFFSET  0xFFA200
 
+Uint8 dsp_dma_unpacked = 0;
+Uint8 dsp_intr_at_block_end = 0;
 
 #if ENABLE_DSP_EMU
 static const char* x_ext_memory_addr_name[] = {
@@ -134,9 +136,9 @@ void DSP_SetIRQB(void)
 /**
  * Handling DMA transfers.
  */
+#if ENABLE_DSP_EMU
 static void DSP_HandleDMA(void)
 {
-#if ENABLE_DSP_EMU
 	if (dsp_core.dma_mode && dsp_core.dma_request && dma_dsp_ready()) {
 		/* Set the counter according to selected DMA mode */
 		if (dsp_core.dma_address_counter==0) {
@@ -165,8 +167,8 @@ static void DSP_HandleDMA(void)
 			return;
 		}
 	}
-#endif
 }
+#endif
 
 
 /**
@@ -225,6 +227,7 @@ void DSP_UnInit(void)
  */
 void DSP_Reset(void)
 {
+#if ENABLE_DSP_EMU
     //LogTraceFlags = TRACE_DSP_ALL;
 	if (ConfigureParams.System.bDSPMemoryExpansion) {
 		DSP_RAMSIZE = DSP_RAMSIZE_96kB;
@@ -237,7 +240,7 @@ void DSP_Reset(void)
 		bDspEmulated = false;
 	}
 	Statusbar_SetDspLed(false);
-#if ENABLE_DSP_EMU
+
 	dsp_core_reset();
 	save_cycles = 0;
 #endif
@@ -264,13 +267,7 @@ void DSP_Start(Uint8 mode)
 void DSP_Run(int nHostCycles)
 {
 #if ENABLE_DSP_EMU
-	if (dsp_core.running == 0)
-		return;
-	
 	save_cycles += nHostCycles * 2;
-
-	if (save_cycles <= 0)
-		return;
 	
 	while (save_cycles > 0)
 	{

@@ -1,4 +1,6 @@
+#include "configuration.h"
 #include "slirp.h"
+#include "nfs/nfsd.h"
 
 /* host address */
 struct in_addr our_addr;
@@ -26,8 +28,6 @@ struct ex_list *exec_list;
 
 /* XXX: suppress those select globals */
 fd_set *global_readfds, *global_writefds, *global_xfds;
-
-char slirp_hostname[33];
 
 #ifdef _WIN32
 
@@ -121,21 +121,22 @@ static int get_dns_addr(struct in_addr *pdns_addr)
 #endif
 
 #ifdef _WIN32
-void slirp_cleanup(void)
+static void slirp_cleanup(void)
 {
     WSACleanup();
+    nfsd_cleanup();
 }
 #endif
 
-int slirp_init(void)
+int slirp_init(struct in_addr *guest_addr)
 {
-    //    debug_init("/tmp/slirp.log", DEBUG_DEFAULT);
+    // debug_init("/tmp/slirp.log", DEBUG_DEFAULT);
     
 #ifdef _WIN32
     {
         WSADATA Data;
         WSAStartup(MAKEWORD(2,0), &Data);
-	atexit(slirp_cleanup);
+        atexit(slirp_cleanup);
     }
 #endif
 
@@ -150,12 +151,13 @@ int slirp_init(void)
     /* set default addresses */
     inet_aton("127.0.0.1", &loopback_addr);
 
-    if (get_dns_addr(&dns_addr) < 0)
-        return -1;
-
-    inet_aton(CTL_SPECIAL, &special_addr);
-	alias_addr.s_addr = special_addr.s_addr | htonl(CTL_ALIAS);
+    special_addr.s_addr = htonl(CTL_NET);
+	alias_addr.s_addr   = special_addr.s_addr | htonl(CTL_ALIAS);
 	getouraddr();
+    get_dns_addr(&dns_addr);
+    
+    guest_addr->s_addr  = special_addr.s_addr | htonl(CTL_HOST);
+
     return 0;
 }
 
@@ -556,10 +558,10 @@ struct arphdr
 	unsigned char		ar_tip[4];		/* target IP address		*/
 };
 
-void arp_input(const uint8_t *pkt, int pkt_len)
+static void arp_input(const uint8_t *pkt, int pkt_len)
 {
-    struct ethhdr *eh = (struct ethhdr *)pkt;
-    struct arphdr *ah = (struct arphdr *)(pkt + ETH_HLEN);
+    const struct ethhdr *eh = (const struct ethhdr *)pkt;
+    const struct arphdr *ah = (const struct arphdr *)(pkt + ETH_HLEN);
     uint8_t arp_reply[ETH_HLEN + sizeof(struct arphdr)];
     struct ethhdr *reh = (struct ethhdr *)arp_reply;
     struct arphdr *rah = (struct arphdr *)(arp_reply + ETH_HLEN);
@@ -570,7 +572,7 @@ void arp_input(const uint8_t *pkt, int pkt_len)
     switch(ar_op) {
     case ARPOP_REQUEST:
         if (!memcmp(ah->ar_tip, &special_addr, 3)) {
-            if (ah->ar_tip[3] == CTL_DNS || ah->ar_tip[3] == CTL_ALIAS) 
+            if (ah->ar_tip[3] == CTL_DNS || ah->ar_tip[3] == CTL_ALIAS || ah->ar_tip[3] == CTL_NFSD) 
                 goto arp_ok;
             for (ex_ptr = exec_list; ex_ptr; ex_ptr = ex_ptr->ex_next) {
                 if (ex_ptr->ex_addr == ah->ar_tip[3])
@@ -646,8 +648,12 @@ void if_encap(const uint8_t *ip_data, int ip_data_len)
 
     memcpy(eh->h_dest, client_ethaddr, ETH_ALEN);
     memcpy(eh->h_source, special_ethaddr, ETH_ALEN - 1);
-    /* XXX: not correct */
-    eh->h_source[5] = CTL_ALIAS;
+    
+    uint32_t ip_src  = ntohl(*(const uint32_t*)&ip_data[12]);
+    if((ip_src & CTL_NET_MASK) == ntohl(special_addr.s_addr))
+        eh->h_source[5] = ip_src; // map local address to enet addresses
+    else
+        eh->h_source[5] = CTL_GATEWAY; // map all others to the gateway enet address
     eh->h_proto = htons(ETH_P_IP);
     memcpy(buf + sizeof(struct ethhdr), ip_data, ip_data_len);
     slirp_output(buf, ip_data_len + ETH_HLEN);
@@ -671,6 +677,6 @@ int slirp_redir(int is_udp, int host_port,
 int slirp_add_exec(int do_pty, const char *args, int addr_low_byte, 
                   int guest_port)
 {
-    return add_exec(&exec_list, do_pty, (char *)args, 
+    return add_exec(&exec_list, do_pty, args, 
                     addr_low_byte, htons(guest_port));
 }

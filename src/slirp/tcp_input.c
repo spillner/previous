@@ -632,7 +632,7 @@ SEQ_GT(ti->ti_ack, tp->t_rtseq))
 			int lastbyte = ntohl(so->so_faddr.s_addr) & 0xff;
 			if (lastbyte != CTL_ALIAS && lastbyte != CTL_DNS) {
 #if 0
-				if (lastbyte == CTL_CMD || lastbyte == CTL_EXEC) {
+				if (lastbyte == CTL_CMD || lastbyte == CTL_GATEWAY) {
 					/* Command or exec adress */
 					so->so_state |= SS_CTL;
 				}

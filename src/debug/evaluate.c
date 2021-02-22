@@ -27,7 +27,6 @@ const char Eval_fileid[] = "Hatari calculate.c : " __DATE__ " " __TIME__;
 #include "evaluate.h"
 #include "main.h"
 #include "m68000.h"
-#include "nextMemory.h"
 #include "symbols.h"
 
 /* define which character indicates which type of number on expression  */

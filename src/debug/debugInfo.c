@@ -21,7 +21,6 @@ const char DebugInfo_fileid[] = "Hatari debuginfo.c : " __DATE__ " " __TIME__;
 #include "file.h"
 #include "ioMem.h"
 #include "m68000.h"
-#include "nextMemory.h"
 #include "screen.h"
 #include "video.h"
 
@@ -74,8 +73,6 @@ static void DebugInfo_CpuMemDump(Uint32 arg)
 	DebugInfo_CallCommand(DebugCpu_MemDump, "memdump", arg);
 }
 
-#if ENABLE_DSP_EMU
-
 static void DebugInfo_DspRegister(Uint32 arg)
 {
 }
@@ -108,8 +105,6 @@ static Uint32 DebugInfo_DspMemArgs(int argc, char *argv[])
 	}
 	return ((Uint32)space<<16) | value;
 }
-
-#endif  /* ENABLE_DSP_EMU */
 
 
 static void DebugInfo_RegAddr(Uint32 arg)
@@ -217,11 +212,9 @@ static const struct {
 } infotable[] = {
 	{ true, "default",   DebugInfo_Default,    NULL, "Show default debugger entry information" },
 	{ true, "disasm",    DebugInfo_CpuDisAsm,  NULL, "Disasm CPU from PC or given <address>" },
-#if ENABLE_DSP_EMU
 	{ true, "dspdisasm", DebugInfo_DspDisAsm,  NULL, "Disasm DSP from given <address>" },
 	{ true, "dspmemdump",DebugInfo_DspMemDump, DebugInfo_DspMemArgs, "Dump DSP memory from given <space> <address>" },
 	{ true, "dspregs",   DebugInfo_DspRegister,NULL, "Show DSP registers values" },
-#endif
     { true, "file",      DebugInfo_FileParse, DebugInfo_FileArgs, "Parse commands from given debugger input <file>" },
 	{ true, "memdump",   DebugInfo_CpuMemDump, NULL, "Dump CPU memory from given <address>" },
 	{ true, "regaddr",   DebugInfo_RegAddr, DebugInfo_RegAddrArgs, "Show <disasm|memdump> from CPU/DSP address pointed by <register>" },

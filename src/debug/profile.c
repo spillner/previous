@@ -16,7 +16,6 @@ const char Profile_fileid[] = "Hatari profile.c : " __DATE__ " " __TIME__;
 #include "debug_priv.h"
 #include "m68000.h"
 #include "profile.h"
-#include "nextMemory.h"
 #include "symbols.h"
 
 #define MAX_PROFILE_VALUE 0xFFFFFFFF

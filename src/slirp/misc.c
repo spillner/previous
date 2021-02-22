@@ -99,7 +99,7 @@ static char *inet_ntop4(const u_char *src, char *dst, socklen_t size) {
 	char tmp[sizeof "255.255.255.255"];
 	int l;
 
-    l = snprintf( tmp, fmt, src[0], src[1], src[2], src[3] );
+    l = snprintf( tmp, sizeof(tmp), fmt, src[0], src[1], src[2], src[3] );
 	if (l <= 0 || (socklen_t) l >= size) {
 		return (NULL);
 	}
@@ -107,11 +107,11 @@ static char *inet_ntop4(const u_char *src, char *dst, socklen_t size) {
 	return (dst);
 }
 
-char * inet_ntop(int af, const void *src, char *dst, socklen_t size)
+const char * inet_ntop(int af, const void *src, char *dst, socklen_t size)
 {
 	switch (af) {
 	case AF_INET:
-		return (inet_ntop4( (unsigned char*)src, (char*)dst, size));
+		return (inet_ntop4( (const unsigned char*)src, (char*)dst, size));
 	default:
         return 0 ;
 	}
@@ -169,7 +169,7 @@ void redir_x(u_int32_t inaddr, int start_port, int display, int screen)
 #ifndef HAVE_INET_ATON
 int inet_aton(const char *cp, struct in_addr *ia)
 {
-	return inet_pton(AF_INET, cp, &ia->s_addr);
+	return inet_pton(AF_INET, cp, (char*)&ia->s_addr);
 }
 #endif
 
@@ -224,7 +224,7 @@ void remque(void *a)
 /* #endif */
 
 
-int add_exec(struct ex_list **ex_ptr, int do_pty, char *exec, int addr, int port)
+int add_exec(struct ex_list **ex_ptr, int do_pty, const char *exec, int addr, int port)
 {
 	struct ex_list *tmp_ptr;
 	
@@ -441,8 +441,8 @@ int fork_exec(struct socket *so, char *ex, int do_pty)
 		bptr = strdup(ex); /* No need to free() this */
 		if (do_pty == 1) {
 			/* Setup "slirp.telnetd -x" */
-			argv[i++] = "slirp.telnetd";
-			argv[i++] = "-x";
+			argv[i++] = strdup("slirp.telnetd");
+			argv[i++] = strdup("-x");
 			argv[i++] = bptr;
 		} else
 		   do {
@@ -808,14 +808,16 @@ int sprintf_len(char *string, const char *format, ...)
 void u_sleep(int usec)
 {
 	struct timeval t;
-	fd_set fdset;
+	fd_set rd_fdset, wr_fdset, ex_fdset;
 	
-	FD_ZERO(&fdset);
+	FD_ZERO(&rd_fdset);
+	FD_ZERO(&wr_fdset);
+	FD_ZERO(&ex_fdset);
 	
 	t.tv_sec = 0;
 	t.tv_usec = usec * 1000;
 	
-	select(0, &fdset, &fdset, &fdset, &t);
+	select(0, &rd_fdset, &wr_fdset, &ex_fdset, &t);
 }
 
 /*

@@ -23,6 +23,8 @@
  */
 
 #include <slirp.h>
+#include "configuration.h"
+#include "nfs/nfsd.h"
 
 struct tftp_session {
     int in_use;
@@ -36,7 +38,7 @@ struct tftp_session {
 
 struct tftp_session tftp_sessions[TFTP_SESSIONS_MAX];
 
-const char *tftp_prefix;
+const char *tftp_prefix = "/";
 
 static void tftp_session_update(struct tftp_session *spt)
 {
@@ -100,24 +102,8 @@ static int tftp_session_find(struct tftp_t *tp)
 static int tftp_read_data(struct tftp_session *spt, u_int16_t block_nr,
 			  u_int8_t *buf, int len)
 {
-  int fd;
-  int bytes_read = 0;
-
-  fd = open(spt->filename, O_RDONLY | O_BINARY);
-
-  if (fd < 0) {
-    return -1;
-  }
-
-  if (len) {
-    lseek(fd, block_nr * 512, SEEK_SET);
-
-    bytes_read = read(fd, buf, len);
-  }
-
-  close(fd);
-
-  return bytes_read;
+    int bytes_read = nfsd_read(spt->filename, block_nr * 512, buf, len);
+    return bytes_read < 0 ? -1 : bytes_read;
 }
 
 static int tftp_send_error(struct tftp_session *spt, 

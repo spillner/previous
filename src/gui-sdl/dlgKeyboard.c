@@ -14,8 +14,7 @@ const char DlgKeyboard_fileid[] = "Previous dlgKeyboard.c : " __DATE__ " " __TIM
 #include "sdlgui.h"
 #include "file.h"
 #include "screen.h"
-#include "dimension.h"
-
+#include "dimension.hpp"
 
 #define ENABLE_LOADED_OPTION 0
 
@@ -89,10 +88,12 @@ void Dialog_KeyboardDlg(void)
 	keyboarddlg[DLGKEY_MAPNAME].txt = dlgmapfile;
 #endif
     
-    if (ConfigureParams.Keyboard.bSwapCmdAlt)
-        keyboarddlg[DLGKEY_SWAP].state |= SG_SELECTED;
-    else
-        keyboarddlg[DLGKEY_SWAP].state &= ~SG_SELECTED;
+    if (ConfigureParams.Keyboard.bSwapCmdAlt) {
+        keyboarddlg[DLGKEY_SWAP].state |= SG_SELECTED;		
+	}
+    else {
+        keyboarddlg[DLGKEY_SWAP].state &= ~SG_SELECTED;		
+	}
 
 	/* Show the dialog: */
 	do

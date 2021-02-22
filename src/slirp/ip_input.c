@@ -44,7 +44,7 @@
 #include <sys/types.h>
 
 #define container_of(ptr, type, member) ({                      \
-        const typeof(((type *) 0)->member) *__mptr = (ptr);     \
+        typeof(((type *) 0)->member) *__mptr = (ptr);     \
         (type *) ((char *) __mptr - offsetof(type, member));})
 
 
@@ -140,7 +140,7 @@ ip_input(m)
 
 	/* check ip_ttl for a correct ICMP reply */
 	if(ip->ip_ttl==0 || ip->ip_ttl==1) {
-	  icmp_error(m, ICMP_TIMXCEED,ICMP_TIMXCEED_INTRANS, 0,"ttl");
+	  icmp_error(m, ICMP_TIMXCEED,ICMP_TIMXCEED_INTRANS, 0, "ttl");
 	  goto bad;
 	}
 

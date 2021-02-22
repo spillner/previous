@@ -30,25 +30,30 @@ char dlgprint_dirname[64];
 /* The Printer options dialog: */
 static SGOBJ printerdlg[] =
 {
-	{ SGBOX, 0, 0, 0,0, 47,23, NULL },
+	{ SGBOX, 0, 0, 0,0, 47,22, NULL },
     { SGTEXT, 0, 0, 16,1, 9,1, "Printer options" },
 
-    { SGBOX, 0, 0, 1,4, 22,8, NULL },
-    { SGCHECKBOX, 0, 0, 2,5, 19,1, "Printer connected" },
+    { SGBOX, 0, 0, 1,3, 22,8, NULL },
+    { SGCHECKBOX, 0, 0, 2,4, 19,1, "Printer connected" },
     
-    { SGBOX, 0, 0, 24,4, 22,8, NULL },
-	{ SGTEXT, 0, 0, 25,5, 30,1, "Paper size:" },
-	{ SGRADIOBUT, 0, 0, 25,7, 4,1, "A4" },
-    { SGRADIOBUT, 0, 0, 25,8, 8,1, "Letter" },
-    { SGRADIOBUT, 0, 0, 25,9, 4,1, "B5" },
-    { SGRADIOBUT, 0, 0, 25,10, 7,1, "Legal" },
-    
-    { SGBOX, 0, 0, 1,13, 45,5, NULL },
-    { SGTEXT, 0, 0, 2,14, 19,1, "Directory to save printer output:" },
-    { SGBUTTON, 0, 0, 37,14, 8,1, "Browse" },
-    { SGTEXT, 0, 0, 2,16, 43,1, dlgprint_dirname },
-    
-	{ SGBUTTON, SG_DEFAULT, 0, 13,20, 21,1, "Back to main menu" },
+    { SGBOX, 0, 0, 24,3, 22,8, NULL },
+	{ SGTEXT, 0, 0, 25,4, 30,1, "Paper size:" },
+	{ SGRADIOBUT, 0, 0, 25,6, 4,1, "A4" },
+    { SGRADIOBUT, 0, 0, 25,7, 8,1, "Letter" },
+    { SGRADIOBUT, 0, 0, 25,8, 4,1, "B5" },
+    { SGRADIOBUT, 0, 0, 25,9, 7,1, "Legal" },
+#if HAVE_LIBPNG
+    { SGBOX, 0, 0, 1,12, 45,5, NULL },
+    { SGTEXT, 0, 0, 2,13, 19,1, "Directory to save printer output:" },
+    { SGBUTTON, 0, 0, 37,13, 8,1, "Browse" },
+    { SGTEXT, 0, 0, 2,15, 43,1, dlgprint_dirname },
+#else
+    { SGBOX, 0, 0, 1,12, 45,5, NULL },
+    { SGTEXT, 0, 0, 2,13, 40,1, "This build of Previous is not configured" },
+    { SGTEXT, 0, 0, 2,14, 1,1, "" },
+    { SGTEXT, 0, 0, 2,15, 17,1, "for PNG printing." },
+#endif
+	{ SGBUTTON, SG_DEFAULT, 0, 13,19, 21,1, "Back to main menu" },
 	{ -1, 0, 0, 0,0, 0,0, NULL }
 };
 

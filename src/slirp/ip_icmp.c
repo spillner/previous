@@ -32,6 +32,7 @@
 
 #include "slirp.h"
 #include "ip_icmp.h"
+#include "nfs/VDNS.h"
 
 struct icmpstat icmpstat;
 
@@ -138,9 +139,9 @@ icmp_input(m, hlen)
 	/* It's an alias */
 	switch(ntohl(so->so_faddr.s_addr) & 0xff) {
 	case CTL_DNS:
-	  addr.sin_addr = dns_addr;
+      addr.sin_addr = nfsd_vdns_match(m) ? loopback_addr : dns_addr;
 	  break;
-	case CTL_ALIAS:
+    case CTL_ALIAS:
 	default:
 	  addr.sin_addr = loopback_addr;
 	  break;
@@ -206,7 +207,7 @@ icmp_error(
      u_char type,
      u_char code,
      int minsize,
-     char *message)
+     const char *message)
 {
   unsigned hlen, shlen, s_ip_len;
   register struct ip *ip;
