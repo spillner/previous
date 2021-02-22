@@ -58,6 +58,7 @@ static const struct Config_Tag configs_Debugger[] =
 static const struct Config_Tag configs_Screen[] =
 {
 	{ "nMonitorType", Int_Tag, &ConfigureParams.Screen.nMonitorType },
+    { "nMonitorNum", Int_Tag, &ConfigureParams.Screen.nMonitorNum },
 	{ "bFullScreen", Bool_Tag, &ConfigureParams.Screen.bFullScreen },
 	{ "bShowStatusbar", Bool_Tag, &ConfigureParams.Screen.bShowStatusbar },
 	{ "bShowDriveLed", Bool_Tag, &ConfigureParams.Screen.bShowDriveLed },
@@ -235,6 +236,10 @@ static const struct Config_Tag configs_Ethernet[] =
     { "bEthernetConnected", Bool_Tag, &ConfigureParams.Ethernet.bEthernetConnected },
     { "bTwistedPair", Bool_Tag, &ConfigureParams.Ethernet.bTwistedPair },
 
+    { "nHostInterface", Int_Tag, &ConfigureParams.Ethernet.nHostInterface },
+    { "szInterfaceName", String_Tag, ConfigureParams.Ethernet.szInterfaceName },
+    { "szNFSroot", String_Tag, ConfigureParams.Ethernet.szNFSroot },
+
     { NULL , Error_Tag, NULL }
 };
 
@@ -244,6 +249,15 @@ static const struct Config_Tag configs_Rom[] =
     { "szRom030FileName", String_Tag, ConfigureParams.Rom.szRom030FileName },
     { "szRom040FileName", String_Tag, ConfigureParams.Rom.szRom040FileName },
     { "szRomTurboFileName", String_Tag, ConfigureParams.Rom.szRomTurboFileName },
+    
+    { "bUseCustomMac", Bool_Tag, &ConfigureParams.Rom.bUseCustomMac },
+    { "nRomCustomMac0", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[0] },
+    { "nRomCustomMac1", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[1] },
+    { "nRomCustomMac2", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[2] },
+    { "nRomCustomMac3", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[3] },
+    { "nRomCustomMac4", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[4] },
+    { "nRomCustomMac5", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[5] },
+
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -282,14 +296,31 @@ static const struct Config_Tag configs_System[] =
 /* Used to load/save nextdimension options */
 static const struct Config_Tag configs_Dimension[] =
 {
-    { "bEnabled",         Bool_Tag, &ConfigureParams.Dimension.bEnabled },
-    { "bI860Thread",      Bool_Tag, &ConfigureParams.Dimension.bI860Thread },
-	{ "bMainDisplay",     Bool_Tag, &ConfigureParams.Dimension.bMainDisplay },
-    { "nMemoryBankSize0", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[0] },
-    { "nMemoryBankSize1", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[1] },
-    { "nMemoryBankSize2", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[2] },
-    { "nMemoryBankSize3", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[3] },
-    { "szRomFileName", String_Tag,  ConfigureParams.Dimension.szRomFileName },
+    { "bI860Thread",       Bool_Tag, &ConfigureParams.Dimension.bI860Thread },
+    { "bMainDisplay",      Bool_Tag, &ConfigureParams.Dimension.bMainDisplay },
+    { "nMainDisplay",      Int_Tag,  &ConfigureParams.Dimension.nMainDisplay },
+
+    { "bEnabled0",         Bool_Tag, &ConfigureParams.Dimension.board[0].bEnabled },
+    { "nMemoryBankSize00", Int_Tag,  &ConfigureParams.Dimension.board[0].nMemoryBankSize[0] },
+    { "nMemoryBankSize01", Int_Tag,  &ConfigureParams.Dimension.board[0].nMemoryBankSize[1] },
+    { "nMemoryBankSize02", Int_Tag,  &ConfigureParams.Dimension.board[0].nMemoryBankSize[2] },
+    { "nMemoryBankSize03", Int_Tag,  &ConfigureParams.Dimension.board[0].nMemoryBankSize[3] },
+    { "szRomFileName0", String_Tag,  ConfigureParams.Dimension.board[0].szRomFileName },
+    
+    { "bEnabled1",         Bool_Tag, &ConfigureParams.Dimension.board[1].bEnabled },
+    { "nMemoryBankSize10", Int_Tag,  &ConfigureParams.Dimension.board[1].nMemoryBankSize[0] },
+    { "nMemoryBankSize11", Int_Tag,  &ConfigureParams.Dimension.board[1].nMemoryBankSize[1] },
+    { "nMemoryBankSize12", Int_Tag,  &ConfigureParams.Dimension.board[1].nMemoryBankSize[2] },
+    { "nMemoryBankSize13", Int_Tag,  &ConfigureParams.Dimension.board[1].nMemoryBankSize[3] },
+    { "szRomFileName1", String_Tag,  ConfigureParams.Dimension.board[1].szRomFileName },
+
+    { "bEnabled2",         Bool_Tag, &ConfigureParams.Dimension.board[2].bEnabled },
+    { "nMemoryBankSize20", Int_Tag,  &ConfigureParams.Dimension.board[2].nMemoryBankSize[0] },
+    { "nMemoryBankSize21", Int_Tag,  &ConfigureParams.Dimension.board[2].nMemoryBankSize[1] },
+    { "nMemoryBankSize22", Int_Tag,  &ConfigureParams.Dimension.board[2].nMemoryBankSize[2] },
+    { "nMemoryBankSize23", Int_Tag,  &ConfigureParams.Dimension.board[2].nMemoryBankSize[3] },
+    { "szRomFileName2", String_Tag,  ConfigureParams.Dimension.board[2].szRomFileName },
+
     { NULL , Error_Tag, NULL }
 };
 
@@ -363,7 +394,10 @@ void Configuration_SetDefault(void)
     /* Set defaults for Ethernet */
     ConfigureParams.Ethernet.bEthernetConnected = false;
     ConfigureParams.Ethernet.bTwistedPair = false;
-    
+    ConfigureParams.Ethernet.nHostInterface = ENET_SLIRP;
+    strcpy(ConfigureParams.Ethernet.szInterfaceName, "");
+    strcpy(ConfigureParams.Ethernet.szNFSroot, "⁨");
+
 	/* Set defaults for Keyboard */
     ConfigureParams.Keyboard.bSwapCmdAlt = false;
 	ConfigureParams.Keyboard.nKeymapType = KEYMAP_SCANCODE;
@@ -408,6 +442,7 @@ void Configuration_SetDefault(void)
 	/* Set defaults for Screen */
 	ConfigureParams.Screen.bFullScreen = false;
 	ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
+    ConfigureParams.Screen.nMonitorNum = 0;
 	ConfigureParams.Screen.bShowStatusbar = true;
 	ConfigureParams.Screen.bShowDriveLed = true;
 
@@ -422,7 +457,11 @@ void Configuration_SetDefault(void)
             Paths_GetWorkingDir(), PATHSEP);
     sprintf(ConfigureParams.Rom.szRomTurboFileName, "%s%cRev_3.3_v74.BIN",
             Paths_GetWorkingDir(), PATHSEP);
-
+    
+    ConfigureParams.Rom.bUseCustomMac = false;
+    memset(ConfigureParams.Rom.nRomCustomMac, 0,
+           sizeof(ConfigureParams.Rom.nRomCustomMac));
+    ConfigureParams.Rom.nRomCustomMac[2] = 0x0f;
 
 	/* Set defaults for System */
     ConfigureParams.System.nMachineType = NEXT_CUBE030;
@@ -434,7 +473,7 @@ void Configuration_SetDefault(void)
     
 	ConfigureParams.System.nCpuLevel = 3;
 	ConfigureParams.System.nCpuFreq = 25;
-	ConfigureParams.System.bCompatibleCpu = true;
+	ConfigureParams.System.bCompatibleCpu = false;
 	ConfigureParams.System.bRealtime = false;
 	ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
 	ConfigureParams.System.bDSPMemoryExpansion = false;
@@ -444,15 +483,18 @@ void Configuration_SetDefault(void)
     ConfigureParams.System.bMMU = true;
     
     /* Set defaults for Dimension */
-    ConfigureParams.Dimension.bI860Thread        = host_num_cpus() > 4;
-    ConfigureParams.Dimension.bEnabled           = false;
-	ConfigureParams.Dimension.bMainDisplay       = false;
-    ConfigureParams.Dimension.nMemoryBankSize[0] = 4;
-    ConfigureParams.Dimension.nMemoryBankSize[1] = 4;
-    ConfigureParams.Dimension.nMemoryBankSize[2] = 4;
-    ConfigureParams.Dimension.nMemoryBankSize[3] = 4;
-    sprintf(ConfigureParams.Dimension.szRomFileName, "%s%cdimension_eeprom.bin",
-            Paths_GetWorkingDir(), PATHSEP);
+    ConfigureParams.Dimension.bI860Thread  = host_num_cpus() != 1;
+    ConfigureParams.Dimension.bMainDisplay = false;
+    ConfigureParams.Dimension.nMainDisplay = 0;
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        ConfigureParams.Dimension.board[i].bEnabled           = false;
+        ConfigureParams.Dimension.board[i].nMemoryBankSize[0] = 4;
+        ConfigureParams.Dimension.board[i].nMemoryBankSize[1] = 4;
+        ConfigureParams.Dimension.board[i].nMemoryBankSize[2] = 4;
+        ConfigureParams.Dimension.board[i].nMemoryBankSize[3] = 4;
+        sprintf(ConfigureParams.Dimension.board[i].szRomFileName, "%s%cdimension_eeprom.bin",
+                Paths_GetWorkingDir(), PATHSEP);
+    }
 
 	/* Initialize the configuration file name */
 	if (strlen(psHomeDir) < sizeof(sConfigFileName)-13)
@@ -489,6 +531,8 @@ static void Configuration_CheckFloatMinMax(float *val, float min, float max)
  * clean file names, etc...  Called from main.c and dialog.c files.
  */
 void Configuration_Apply(bool bReset) {
+    int i;
+
     /* Mouse settings */
     Configuration_CheckFloatMinMax(&ConfigureParams.Mouse.fLinSpeedNormal,MOUSE_LIN_MIN,MOUSE_LIN_MAX);
     Configuration_CheckFloatMinMax(&ConfigureParams.Mouse.fLinSpeedLocked,MOUSE_LIN_MIN,MOUSE_LIN_MAX);
@@ -503,7 +547,9 @@ void Configuration_Apply(bool bReset) {
     Configuration_CheckMemory(ConfigureParams.Memory.nMemoryBankSize);
 	
  	/* Check nextdimension memory size and screen options */
-	Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize);
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        Configuration_CheckDimensionMemory(ConfigureParams.Dimension.board[i].nMemoryBankSize);
+    }
 	Configuration_CheckDimensionSettings();
     
     /* Make sure twisted pair ethernet is disabled on 68030 Cube */
@@ -513,10 +559,12 @@ void Configuration_Apply(bool bReset) {
     File_MakeAbsoluteName(ConfigureParams.Rom.szRom030FileName);
     File_MakeAbsoluteName(ConfigureParams.Rom.szRom040FileName);
     File_MakeAbsoluteName(ConfigureParams.Rom.szRomTurboFileName);
-    File_MakeAbsoluteName(ConfigureParams.Dimension.szRomFileName);
     File_MakeAbsoluteName(ConfigureParams.Printer.szPrintToFileName);
 
-    int i;
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        File_MakeAbsoluteName(ConfigureParams.Dimension.board[i].szRomFileName);
+    }
+    
     for (i = 0; i < ESP_MAX_DEVS; i++) {
         File_MakeAbsoluteName(ConfigureParams.SCSI.target[i].szImageName);
     }
@@ -703,10 +751,37 @@ int Configuration_CheckDimensionMemory(int *banksize) {
 }
 
 void Configuration_CheckDimensionSettings(void) {
-	if (ConfigureParams.System.nMachineType==NEXT_STATION || !ConfigureParams.Dimension.bEnabled) {
-		ConfigureParams.Dimension.bEnabled = false;
-		ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
-	}
+    int i;
+    bool enabled = false;
+    
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        if (ConfigureParams.System.nMachineType==NEXT_STATION) {
+            ConfigureParams.Dimension.board[i].bEnabled = false;
+        }
+        if (ConfigureParams.Dimension.board[i].bEnabled) {
+            enabled = true;
+        } else if (ConfigureParams.Dimension.bMainDisplay) {
+            if (ConfigureParams.Dimension.nMainDisplay == i) {
+                ConfigureParams.Dimension.bMainDisplay = false;
+                ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
+            }
+        }
+    }
+    if (enabled) {
+        ConfigureParams.System.bNBIC = true;
+    } else {
+        ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
+    }
+    if ((ConfigureParams.Dimension.nMainDisplay >= ND_MAX_BOARDS) ||
+        (ConfigureParams.Dimension.nMainDisplay < 0)) {
+        ConfigureParams.Dimension.nMainDisplay = 0;
+    }
+    if ((ConfigureParams.Screen.nMonitorNum >= ND_MAX_BOARDS) ||
+        (ConfigureParams.Screen.nMonitorNum < 0)) {
+        ConfigureParams.Screen.nMonitorNum = 0;
+    }
+    
+    ConfigureParams.Dimension.bI860Thread = host_num_cpus() != 1;
 }
 
 void Configuration_CheckEthernetSettings(void) {

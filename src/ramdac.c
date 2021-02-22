@@ -66,7 +66,7 @@ static void bt463_autoinc_reg(bt463* ramdac) {
 }
 
 /* BT463 Registers */
-uae_u32 bt463_read_reg(bt463* ramdac) {
+static uae_u32 bt463_read_reg(bt463* ramdac) {
     uae_u32 result = 0;
     
     if ((ramdac->addr&0xFF)<0x10) {
@@ -93,7 +93,7 @@ uae_u32 bt463_read_reg(bt463* ramdac) {
     return result;
 }
 
-void bt463_write_reg(bt463* ramdac, uae_u32 val) {
+static void bt463_write_reg(bt463* ramdac, uae_u32 val) {
    
     if ((ramdac->addr&0xFF)<0x10) {
         switch (ramdac->addr&0x0F) {
@@ -114,7 +114,7 @@ void bt463_write_reg(bt463* ramdac, uae_u32 val) {
 }
 
 /* BT463 Cursor Color */
-uae_u32 bt463_read_ccr(bt463* ramdac) {
+static uae_u32 bt463_read_ccr(bt463* ramdac) {
     uae_u32 result = 0;
     
     if ((ramdac->addr&0xFF)<2) {
@@ -125,7 +125,7 @@ uae_u32 bt463_read_ccr(bt463* ramdac) {
     return result;
 }
 
-void bt463_write_ccr(bt463* ramdac, uae_u32 val) {
+static void bt463_write_ccr(bt463* ramdac, uae_u32 val) {
     
     if ((ramdac->addr&0xFF)<4) {
         ramdac->ccr[(ramdac->addr&3)*3+ramdac->idx] = val & 0xFF;
@@ -134,7 +134,7 @@ void bt463_write_ccr(bt463* ramdac, uae_u32 val) {
 }
 
 /* BT463 Window Type Table */
-uae_u32 bt463_read_wtt(bt463* ramdac) {
+static uae_u32 bt463_read_wtt(bt463* ramdac) {
     uae_u32 result = 0;
     
     if ((ramdac->addr&0xFF)<0x10) {
@@ -158,7 +158,7 @@ uae_u32 bt463_read_wtt(bt463* ramdac) {
     return result;
 }
 
-void bt463_write_wtt(bt463* ramdac, uae_u32 val) {
+static void bt463_write_wtt(bt463* ramdac, uae_u32 val) {
     
     if ((ramdac->addr&0xFF)<0x10) {
         switch (ramdac->idx) {
@@ -180,7 +180,7 @@ void bt463_write_wtt(bt463* ramdac, uae_u32 val) {
 }
 
 /* BT463 Palette RAM */
-uae_u32 bt463_read_palette(bt463* ramdac) {
+static uae_u32 bt463_read_palette(bt463* ramdac) {
     uae_u32 result = 0;
     
     if (ramdac->addr<0x210) {
@@ -191,7 +191,7 @@ uae_u32 bt463_read_palette(bt463* ramdac) {
     return result;
 }
 
-void bt463_write_palette(bt463* ramdac, uae_u32 val) {
+static void bt463_write_palette(bt463* ramdac, uae_u32 val) {
     
     if (ramdac->addr<0x210) {
         ramdac->ram[ramdac->addr*3+ramdac->idx] = val & 0xFF;

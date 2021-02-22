@@ -440,7 +440,7 @@ void dma_esp_write_memory(void) {
                 ESP_DMA_set_status();
 
                 while (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit && espdma_buf_size>0) {
-                    NEXTMemory_WriteLong(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, DMA_BURST_SIZE-espdma_buf_size));
+                    put_long(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, DMA_BURST_SIZE-espdma_buf_size));
                     dma[CHANNEL_SCSI].next+=4;
                     espdma_buf_size-=4;
                 }
@@ -476,7 +476,7 @@ void dma_esp_flush_buffer(void) {
             Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Flush buffer to memory at $%08x, 4 bytes",dma[CHANNEL_SCSI].next);
             if (espdma_buf_size>0) {
                 /* Write one long word to memory */
-                NEXTMemory_WriteLong(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
+                put_long(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
                 espdma_buf_size-=4;
             }
             dma[CHANNEL_SCSI].next+=4;
@@ -515,7 +515,7 @@ void dma_esp_read_memory(void) {
             /* Read data from memory to DMA channel FIFO (only if limit < FIFO size) */
             if (espdma_buf_limit<DMA_BURST_SIZE) {
                 while (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit && espdma_buf_limit<DMA_BURST_SIZE) {
-                    dma_putlong(NEXTMemory_ReadLong(dma[CHANNEL_SCSI].next), espdma_buf, espdma_buf_limit);
+                    dma_putlong(get_long(dma[CHANNEL_SCSI].next), espdma_buf, espdma_buf_limit);
                     dma[CHANNEL_SCSI].next+=4;
                     espdma_buf_limit+=4;
                     espdma_buf_size+=4;
@@ -604,7 +604,7 @@ void dma_mo_write_memory(void) {
                 break;
             } else { /* Empty DMA channel FIFO (only if limit reached FIFO size) */
                 while (dma[CHANNEL_DISK].next<dma[CHANNEL_DISK].limit && modma_buf_size>0) {
-                    NEXTMemory_WriteLong(dma[CHANNEL_DISK].next, dma_getlong(modma_buf, DMA_BURST_SIZE-modma_buf_size));
+                    put_long(dma[CHANNEL_DISK].next, dma_getlong(modma_buf, DMA_BURST_SIZE-modma_buf_size));
                     dma[CHANNEL_DISK].next+=4;
                     modma_buf_size-=4;
                 }
@@ -648,7 +648,7 @@ void dma_mo_read_memory(void) {
             /* Read data from memory to DMA channel FIFO (only if limit < FIFO size) */
             if (modma_buf_limit<DMA_BURST_SIZE) {
                 while (dma[CHANNEL_DISK].next<dma[CHANNEL_DISK].limit && modma_buf_limit<DMA_BURST_SIZE) {
-                    dma_putlong(NEXTMemory_ReadLong(dma[CHANNEL_DISK].next), modma_buf, modma_buf_limit);
+                    dma_putlong(get_long(dma[CHANNEL_DISK].next), modma_buf, modma_buf_limit);
                     dma[CHANNEL_DISK].next+=4;
                     modma_buf_limit+=4;
                     modma_buf_size+=4;
@@ -711,7 +711,7 @@ Uint8* dma_sndout_read_memory(int* len) {
             *len   = dma[CHANNEL_SOUNDOUT].limit - dma[CHANNEL_SOUNDOUT].next;
             result = malloc(*len * 2);
             for(i = 0; dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit; dma[CHANNEL_SOUNDOUT].next++, i++)
-                result[i] = NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
+                result[i] = get_byte(dma[CHANNEL_SOUNDOUT].next);
         } CATCH(prb) {
             Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Bus error reading from %08x",dma[CHANNEL_SOUNDOUT].next);
             dma[CHANNEL_SOUNDOUT].csr &= ~DMA_ENABLE;
@@ -744,7 +744,7 @@ int dma_sndin_write_memory() {
 				if (value < 0) {
 					break;
 				}
-				NEXTMemory_WriteByte(dma[CHANNEL_SOUNDIN].next, value);
+				put_byte(dma[CHANNEL_SOUNDIN].next, value);
 				dma[CHANNEL_SOUNDIN].next++;
             }
         } CATCH(prb) {
@@ -777,7 +777,7 @@ void dma_printer_read_memory(void) {
         
         TRY(prb) {
             while (dma[CHANNEL_PRINTER].next<dma[CHANNEL_PRINTER].limit && lp_buffer.size<lp_buffer.limit) {
-                lp_buffer.data[lp_buffer.size]=NEXTMemory_ReadByte(dma[CHANNEL_PRINTER].next);
+                lp_buffer.data[lp_buffer.size]=get_byte(dma[CHANNEL_PRINTER].next);
                 lp_buffer.size++;
                 dma[CHANNEL_PRINTER].next++;
             }
@@ -833,7 +833,7 @@ void dma_enet_write_memory(bool eop) {
     
     TRY(prb) {
         while (dma[CHANNEL_EN_RX].next<dma[CHANNEL_EN_RX].limit && enet_rx_buffer.size>0) {
-            NEXTMemory_WriteByte(dma[CHANNEL_EN_RX].next, enet_rx_buffer.data[enet_rx_buffer.limit-enet_rx_buffer.size]);
+            put_byte(dma[CHANNEL_EN_RX].next, enet_rx_buffer.data[enet_rx_buffer.limit-enet_rx_buffer.size]);
             enet_rx_buffer.size--;
             dma[CHANNEL_EN_RX].next++;
         }
@@ -861,7 +861,7 @@ bool dma_enet_read_memory(void) {
         
         TRY(prb) {
             while (dma[CHANNEL_EN_TX].next<ENADDR(dma[CHANNEL_EN_TX].limit) && enet_tx_buffer.size<enet_tx_buffer.limit) {
-                enet_tx_buffer.data[enet_tx_buffer.size]=NEXTMemory_ReadByte(dma[CHANNEL_EN_TX].next);
+                enet_tx_buffer.data[enet_tx_buffer.size]=get_byte(dma[CHANNEL_EN_TX].next);
                 enet_tx_buffer.size++;
                 dma[CHANNEL_EN_TX].next++;
             }
@@ -922,7 +922,7 @@ void dma_m2m_write_memory(void) {
 
             TRY(prb) {
                 while (m2m_buffer_size < DMA_BURST_SIZE) {
-                    m2m_buffer[m2m_buffer_size]=NEXTMemory_ReadByte(dma[CHANNEL_M2R].next);
+                    m2m_buffer[m2m_buffer_size]=get_byte(dma[CHANNEL_M2R].next);
                     m2m_buffer_size++;
                     dma[CHANNEL_M2R].next++;
                 }
@@ -941,7 +941,7 @@ void dma_m2m_write_memory(void) {
         TRY(prb) {
             /* Write the contents of the buffer to memory */
             while (m2m_buffer_size > 0) {
-                NEXTMemory_WriteByte(dma[CHANNEL_R2M].next, m2m_buffer[DMA_BURST_SIZE-m2m_buffer_size]);
+                put_byte(dma[CHANNEL_R2M].next, m2m_buffer[DMA_BURST_SIZE-m2m_buffer_size]);
                 m2m_buffer_size--;
                 dma[CHANNEL_R2M].next++;
             }
@@ -970,7 +970,7 @@ void dma_dsp_write_memory(Uint8 val) {
 	
 	TRY(prb) {
 		if (dma[CHANNEL_DSP].next<dma[CHANNEL_DSP].limit) {
-			NEXTMemory_WriteByte(dma[CHANNEL_DSP].next, val);
+			put_byte(dma[CHANNEL_DSP].next, val);
 			dma[CHANNEL_DSP].next++;
 		}
 	} CATCH(prb) {
@@ -998,7 +998,7 @@ Uint8 dma_dsp_read_memory(void) {
 	
 	TRY(prb) {
 		if (dma[CHANNEL_DSP].next<dma[CHANNEL_DSP].limit) {
-			val = NEXTMemory_ReadByte(dma[CHANNEL_DSP].next);
+			val = get_byte(dma[CHANNEL_DSP].next);
 			dma[CHANNEL_DSP].next++;
 		}
 	} CATCH(prb) {
@@ -1050,7 +1050,7 @@ void dma_scc_read_memory(void) {
     Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCC: Read from memory at $%08x, %i bytes",
                dma[CHANNEL_SCC].next,dma[CHANNEL_SCC].limit-dma[CHANNEL_SCC].next);
     while (dma[CHANNEL_SCC].next<dma[CHANNEL_SCC].limit) {
-        scc_buf[0]=NEXTMemory_ReadByte(dma[CHANNEL_SCC].next);
+        scc_buf[0]=get_byte(dma[CHANNEL_SCC].next);
         dma[CHANNEL_SCC].next++;
     }
     
@@ -1177,7 +1177,7 @@ void tdma_flush_buffer(int channel) {
 		for (i = 0; i < DMA_BURST_SIZE; i+=4) {
 			if (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit) {
 				if (espdma_buf_size) {
-					NEXTMemory_WriteLong(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
+					put_long(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
 					espdma_buf_size-=4;
 				}
 				dma[CHANNEL_SCSI].next+=4;

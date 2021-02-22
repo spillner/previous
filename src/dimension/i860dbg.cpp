@@ -125,7 +125,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                 m_single_stepping = 1;
                 break;
             case 'w':
-                nd_dbg_cmd(buf);
+                nd->dbg_cmd(buf);
                 break;
             case 'k':
                 m_console[m_console_idx] = 0;
@@ -160,13 +160,16 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
             case 'x':
                 if(buf[1] == '0') {
                     UINT32 v;
-                    sscanf (buf + 1, "%x", &v);
-                    if (GET_DIRBASE_ATE ())
-                        fprintf (stderr, "vma 0x%08x ==> phys 0x%08x\n", v, get_address_translation (v, 1, 0));
-                    else
-                        fprintf (stderr, "not in virtual address mode.\n");
-                    break;
+                    if (sscanf (buf + 1, "%x", &v) > 0) {
+                        if (GET_DIRBASE_ATE ())
+                            fprintf (stderr, "vma 0x%08x ==> phys 0x%08x\n", v, get_address_translation (v, 1, 0));
+                        else
+                            fprintf (stderr, "not in virtual address mode.\n");
+		        break;
+		    }
                 }
+                fprintf (stderr, "Bad format for memory address (expected hex with leading zero, got '%s').\n", buf + 1);
+                break;
             case '?':
                 fprintf (stderr,
                          "   m: dump bytes (m[0xaddress])\n"
@@ -181,10 +184,10 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                          "   b: break - set trap on next instruction\n"
                          "   t: dump traceback buffer (t[count])\n"
                          "   x: give virt->phys translation (x{0xaddress})\n");
-                nd_dbg_cmd(0);
+                nd->dbg_cmd(0);
                 break;
             default:
-                if(!(nd_dbg_cmd(buf)))
+                if(!(nd->dbg_cmd(buf)))
                     fprintf (stderr, "Bad command '%s'. Type '?' for help.\n", buf);
                 break;
         }
@@ -232,7 +235,7 @@ void i860_cpu_device::dbg_memdump (UINT32 addr, int len) {
 			if (GET_DIRBASE_ATE ())
 				phys_addr = get_address_translation (addr, 1  /* is_dataref */, 0 /* is_write */);
 
-			rdmem[1](phys_addr, (UINT32*)&b[i]);
+			rdmem[1](nd, phys_addr, (UINT32*)&b[i]);
 			fprintf (stderr, "%02x ", b[i]);
 			addr++;
 		}
@@ -263,7 +266,7 @@ void i860_cpu_device::dump_pipe (int type)
         {
             if (m_A[i].stat.arp)
                 fprintf (stderr, "[%dd] 0x%016llx ", i + 1,
-                         *(UINT64 *)(&m_A[i].val.d));
+                         (unsigned long long) *(UINT64 *)(&m_A[i].val.d));
             else
                 fprintf (stderr, "[%ds] 0x%08x ", i + 1,
                          *(UINT32 *)(&m_A[i].val.s));
@@ -280,7 +283,7 @@ void i860_cpu_device::dump_pipe (int type)
         {
             if (m_M[i].stat.mrp)
                 fprintf (stderr, "[%dd] 0x%016llx ", i + 1,
-                         *(UINT64 *)(&m_M[i].val.d));
+                         (unsigned long long) *(UINT64 *)(&m_M[i].val.d));
             else
                 fprintf (stderr, "[%ds] 0x%08x ", i + 1,
                          *(UINT32 *)(&m_M[i].val.s));
@@ -296,7 +299,7 @@ void i860_cpu_device::dump_pipe (int type)
         {
             if (m_L[i].stat.lrp)
                 fprintf (stderr, "[%dd] 0x%016llx ", i + 1,
-                         *(UINT64 *)(&m_L[i].val.d));
+                         (unsigned long long) *(UINT64 *)(&m_L[i].val.d));
             else
                 fprintf (stderr, "[%ds] 0x%08x ", i + 1,
                          *(UINT32 *)(&m_L[i].val.s));
@@ -310,7 +313,7 @@ void i860_cpu_device::dump_pipe (int type)
         fprintf (stderr, "  I: ");
         if (m_G.stat.irp)
             fprintf (stderr, "[1d] 0x%016llx\n",
-                     *(UINT64 *)(&m_G.val.d));
+                     (unsigned long long) *(UINT64 *)(&m_G.val.d));
         else
             fprintf (stderr, "[1s] 0x%08x\n",
                      *(UINT32 *)(&m_G.val.s));
@@ -347,7 +350,7 @@ void i860_cpu_device::dump_state()
     fprintf(stderr, "   epsr: INT=%d, OF=%d BE=%d WP=%d\n",       GET_EPSR_INT (), GET_EPSR_OF (), GET_EPSR_BE (), GET_EPSR_WP());
     fprintf(stderr, "dirbase: CS8=%d ATE=%d 0x%08x",              GET_DIRBASE_CS8(), GET_DIRBASE_ATE(), m_cregs[CR_DIRBASE]);
     fprintf(stderr, "    fir: 0x%08x fsr: 0x%08x pc:0x%08x\n", m_cregs[CR_FIR], m_cregs[CR_FSR], m_pc);
-    fprintf(stderr, "  merge: 0x%016llx\n", m_merge);
+    fprintf(stderr, "  merge: 0x%016llx\n", (unsigned long long) m_merge);
 }
 
 void i860_cpu_device::halt(bool state) {

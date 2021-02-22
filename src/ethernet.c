@@ -16,6 +16,7 @@
 #include "bmap.h"
 #include "ethernet.h"
 #include "enet_slirp.h"
+#include "enet_pcap.h"
 #include "cycInt.h"
 #include "statusbar.h"
 
@@ -26,6 +27,8 @@
 
 #define IO_SEG_MASK	0x1FFFF
 
+EthernetBuffer enet_tx_buffer;
+EthernetBuffer enet_rx_buffer;
 
 struct {
     Uint8 tx_status;
@@ -88,6 +91,10 @@ bool enet_stopped;
 
 void enet_reset(void);
 
+void (*enet_output)(void);
+void (*enet_input)(Uint8 *pkt, int pkt_len);
+void (*enet_start)(Uint8 *mac);
+void (*enet_stop)(void);
 
 void EN_TX_Status_Read(void) { // 0x02006000
     IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = enet.tx_status;
@@ -274,6 +281,30 @@ static void enet_rx_interrupt(Uint8 intr) {
 #define RX_ANY          0x01    // Accept any packets
 #define RX_OWN          0x02    // Accept own packets
 
+/* Ethernet frame size limits */
+#define ENET_FRAMESIZE_MIN  64      /* 46 byte data and 14 byte header, 4 byte CRC */
+#define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
+
+/* Ethernet periodic check */
+#define ENET_IO_DELAY   500     /* use 500 for NeXT hardware test, 20 for status test */
+#define ENET_IO_SHORT   40      /* use 40 for 68030 hardware test */
+
+/* Ethernet states */
+enum {
+    RECV_STATE_WAITING,
+    RECV_STATE_RECEIVING
+} receiver_state;
+
+static bool tx_done;
+static bool rx_chain;
+static int old_size;
+static int en_state;
+
+#define EN_DISCONNECTED    0
+#define EN_LOOPBACK        1
+#define EN_THINWIRE        2
+#define EN_TWISTEDPAIR     3
+
 static bool recv_multicast(Uint8 *packet) {
     if (packet[0]&0x01)
         return true;
@@ -349,23 +380,14 @@ static bool enet_packet_for_me(Uint8 *packet) {
     switch (enet.rx_mode&RXMODE_MATCH_MODE) {
         case RX_NOPACKETS:
             return false;
-            
         case RX_LIMITED:
-            if (recv_broadcast(packet) || recv_me(packet) || recv_local_multicast(packet))
-                return true;
-            else
-                return false;
-            
+            return recv_broadcast(packet) || recv_me(packet) || recv_local_multicast(packet);
         case RX_NORMAL:
-            if (recv_broadcast(packet) || recv_me(packet) || recv_multicast(packet))
-                return true;
-            else
-                return false;
-            
+            return recv_broadcast(packet) || recv_me(packet) || recv_multicast(packet);
         case RX_PROMISCUOUS:
             return true;
-            
-        default: return false;
+        default:
+            return false;
     }
 }
 
@@ -381,7 +403,8 @@ void enet_receive(Uint8 *pkt, int len) {
         enet_rx_buffer.size=enet_rx_buffer.limit=len;
 		enet.tx_status |= TXSTAT_NET_BUSY;
     } else {
-        Log_Printf(LOG_WARN, "[EN] Packet is not for me.");
+        if (en_state != EN_LOOPBACK && en_state != EN_THINWIRE) // don't log warning if it is a self-sent packed
+            Log_Printf(LOG_WARN, "[EN] Packet is not for me.");
     }
 }
 
@@ -397,29 +420,6 @@ static void print_buf(Uint8 *buf, Uint32 size) {
     printf("\n");
 #endif
 }
-
-
-#define ENET_FRAMESIZE_MIN  64      /* 46 byte data and 14 byte header, 4 byte CRC */
-#define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
-
-/* Ethernet periodic check */
-#define ENET_IO_DELAY   500     /* use 500 for NeXT hardware test, 20 for status test */
-#define ENET_IO_SHORT   40      /* use 40 for 68030 hardware test */
-
-enum {
-    RECV_STATE_WAITING,
-    RECV_STATE_RECEIVING
-} receiver_state;
-
-bool tx_done;
-bool rx_chain;
-int old_size;
-int en_state;
-
-#define EN_DISCONNECTED	0
-#define EN_LOOPBACK		1
-#define EN_THINWIRE		2
-#define EN_TWISTEDPAIR	3
 
 /* Fujitsu ethernet controller */
 static int enet_state(void) {
@@ -478,7 +478,7 @@ static void enet_io(void) {
 					receiver_state = RECV_STATE_RECEIVING;
 			} else if (en_state == EN_THINWIRE || en_state == EN_TWISTEDPAIR) {
 				/* Receive from real world network */
-				enet_slirp_queue_poll();
+				enet_output();
 				break;
 			} else
 				break;
@@ -551,7 +551,7 @@ static void enet_io(void) {
 						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
 					} else {
 						/* Send to real world network */
-						enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+						enet_input(enet_tx_buffer.data,enet_tx_buffer.size);
 						/* Simultaneously receive packet on thin ethernet */
 						if (en_state == EN_THINWIRE) {
 							enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
@@ -632,7 +632,7 @@ static void new_enet_io(void) {
 					receiver_state = RECV_STATE_RECEIVING;
 			} else if (en_state == EN_THINWIRE || en_state == EN_TWISTEDPAIR) {
 				/* Receive from real world network */
-				enet_slirp_queue_poll();
+				enet_output();
 				break;
 			} else
 				break;
@@ -691,7 +691,7 @@ static void new_enet_io(void) {
 						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
 					} else {
 						/* Send to real world network */
-						enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+						enet_input(enet_tx_buffer.data,enet_tx_buffer.size);
 						/* Simultaneously receive packet on thin ethernet */
 						if (en_state == EN_THINWIRE) {
 							enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
@@ -718,9 +718,9 @@ void ENET_IO_Handler(void) {
 	if (enet.reset&EN_RESET) {
 		Log_Printf(LOG_WARN, "Stopping Ethernet Transmitter/Receiver");
 		enet_stopped=true;
-		/* Stop SLIRP */
+		/* Stop SLIRP/PCAP */
 		if (ConfigureParams.Ethernet.bEthernetConnected) {
-			enet_slirp_stop();
+			enet_stop();
 		}
 		return;
 	}
@@ -741,29 +741,49 @@ void enet_reset(void) {
         Log_Printf(LOG_WARN, "Starting Ethernet Transmitter/Receiver");
         enet_stopped=false;
         CycInt_AddRelativeInterruptUs(ENET_IO_DELAY, 0, INTERRUPT_ENET_IO);
-        /* Start SLIRP */
+        /* Start SLIRP/PCAP */
         if (ConfigureParams.Ethernet.bEthernetConnected) {
-            enet_slirp_start();
+            enet_start(enet.mac_addr);
         }
     }
 }
 
 void Ethernet_Reset(bool hard) {
+    static int init_done = 0;
+
     if (hard) {
         enet.reset=EN_RESET;
         enet_stopped=true;
         enet_rx_buffer.size=enet_tx_buffer.size=0;
         enet_rx_buffer.limit=enet_tx_buffer.limit=64*1024;
         enet.tx_status=ConfigureParams.System.bTurbo?0:TXSTAT_READY;
-        /* Stop SLIRP */
-        enet_slirp_stop();
+    }
+    
+    if (init_done) {
+        /* Stop SLIRP/PCAP */
+        enet_stop();
+    }
+#if HAVE_PCAP
+    if (ConfigureParams.Ethernet.nHostInterface == ENET_PCAP) {
+        enet_output = enet_pcap_queue_poll;
+        enet_input  = enet_pcap_input;
+        enet_start  = enet_pcap_start;
+        enet_stop   = enet_pcap_stop;
+    } else
+#endif
+    {
+        enet_output = enet_slirp_queue_poll;
+        enet_input  = enet_slirp_input;
+        enet_start  = enet_slirp_start;
+        enet_stop   = enet_slirp_stop;
+    }
+    init_done = 1;
+    
+    if (ConfigureParams.Ethernet.bEthernetConnected && !(enet.reset&EN_RESET)) {
+        /* Start SLIRP/PCAP */
+        enet_start(enet.mac_addr);
     } else {
-        if (ConfigureParams.Ethernet.bEthernetConnected && !(enet.reset&EN_RESET)) {
-            /* Start SLIRP */
-            enet_slirp_start();
-        } else {
-            /* Stop SLIRP */
-            enet_slirp_stop();
-        }
+        /* Stop SLIRP/PCAP */
+        enet_stop();
     }
 }

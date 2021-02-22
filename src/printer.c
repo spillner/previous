@@ -17,16 +17,16 @@
 #include "statusbar.h"
 #include "file.h"
 
-#include "png.h"
-
-#define USE_PNG_PRINTING 1
-
+#if HAVE_LIBPNG
+#include <png.h>
+#endif
 
 #define IO_SEG_MASK 0x1FFFF
 
 #define LOG_LP_REG_LEVEL    LOG_DEBUG
 #define LOG_LP_LEVEL        LOG_DEBUG
 
+PrinterBuffer lp_buffer;
 
 struct {
     /* Registers */
@@ -683,7 +683,7 @@ static const char *lp_get_filename(void) {
 
 
 /* PNG printing functions */
-#if USE_PNG_PRINTING
+#if HAVE_LIBPNG
 const int MAX_PAGE_LEN = 400 * 14; // 14 inches is the length of US legal paper, longest paper that fits into the NeXT printer cartridge
 png_structp png_ptr          = NULL;
 png_infop   png_info_ptr     = NULL;
@@ -696,7 +696,7 @@ const char* png_path;
 #endif
 
 void lp_png_setup(Uint32 data) {
-#if USE_PNG_PRINTING
+#if HAVE_LIBPNG
     int i;
     png_width = ((data >> 16) & 0x7F) * 32;
     
@@ -729,41 +729,45 @@ void lp_png_setup(Uint32 data) {
 }
 
 void lp_png_print(void) {
-#if USE_PNG_PRINTING
-    int i;
-    
-    for (i = 0; i < lp_buffer.size; i++) {
-        png_row_pointers[png_count/png_width][(png_count%png_width)/8] = ~lp_buffer.data[i];
-        png_count += 8;
+#if HAVE_LIBPNG
+    if(png_ptr) {
+        int i;
+        
+        for (i = 0; i < lp_buffer.size; i++) {
+            png_row_pointers[png_count/png_width][(png_count%png_width)/8] = ~lp_buffer.data[i];
+            png_count += 8;
+        }
     }
 #endif
 }
 
 void lp_png_finish(void) {
-#if USE_PNG_PRINTING
-    png_set_IHDR(png_ptr,
-                 png_info_ptr,
-                 png_width,
-                 png_count / png_width,
-                 1,
-                 PNG_COLOR_TYPE_GRAY,
-                 PNG_INTERLACE_NONE,
-                 PNG_COMPRESSION_TYPE_DEFAULT,
-                 PNG_FILTER_TYPE_DEFAULT);
-    
-    png_path = lp_get_filename();
-    
-    FILE* png_fp = File_Open(png_path, "wb");
-    
-    if (png_fp) {
-        png_init_io(png_ptr, png_fp);
-        png_set_rows(png_ptr, png_info_ptr, png_row_pointers);
-        png_write_png(png_ptr, png_info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
-    } else {
-        Statusbar_AddMessage("Laser Printer Error: Could not create output file!", 10000);
+#if HAVE_LIBPNG
+    if(png_ptr) {
+        png_set_IHDR(png_ptr,
+                     png_info_ptr,
+                     png_width,
+                     png_count / png_width,
+                     1,
+                     PNG_COLOR_TYPE_GRAY,
+                     PNG_INTERLACE_NONE,
+                     PNG_COMPRESSION_TYPE_DEFAULT,
+                     PNG_FILTER_TYPE_DEFAULT);
+        
+        png_path = lp_get_filename();
+        
+        FILE* png_fp = File_Open(png_path, "wb");
+        
+        if (png_fp) {
+            png_init_io(png_ptr, png_fp);
+            png_set_rows(png_ptr, png_info_ptr, png_row_pointers);
+            png_write_png(png_ptr, png_info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+        } else {
+            Statusbar_AddMessage("Laser Printer Error: Could not create output file!", 10000);
+        }
+        
+        File_Close(png_fp);
+        png_page_count++;
     }
-    
-    File_Close(png_fp);
-    png_page_count++;
 #endif
 }

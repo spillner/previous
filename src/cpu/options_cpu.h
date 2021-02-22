@@ -1,31 +1,40 @@
 /*
   Hatari - options_cpu.h
 
-  This file is distributed under the GNU Public License, version 2 or at
-  your option any later version. Read the file gpl.txt for details.
+  This file is distributed under the GNU General Public License, version 2
+  or at your option any later version. Read the file gpl.txt for details.
 */
 
-#ifndef OPTIONS_CPU_H
-#define OPTIONS_CPU_H
+#ifndef UAE_OPTIONS_H
+#define UAE_OPTIONS_H
 
-#define MAX_CUSTOM_MEMORY_ADDRS 2
+#include "uae/types.h"
+
 
 struct uae_prefs {
-    int cpu_model;
-    int cpu_level;
-    int mmu_model;
-    int fpu_model;
-    int fpu_revision;
-    bool fpu_strict;
-    bool cpu_compatible;
-    int cachesize;
-    bool compfpu;
-    int cpu_idle;
-    int cpu060_revision;
+	bool cpu_cycle_exact;
+	int cpu_clock_multiplier;
+	int cpu_frequency;
+	bool cpu_memory_cycle_exact;
+
+	int m68k_speed;
+	int cpu_model;
+	int mmu_model;
+	bool mmu_ec;
+	int cpu060_revision;
+	int fpu_model;
+	int fpu_revision;
+	bool cpu_compatible;
+	bool int_no_unimplemented;
+	bool fpu_no_unimplemented;
+	bool address_space_24;
+	bool cpu_data_cache;
 };
 
+
 extern struct uae_prefs currprefs, changed_prefs;
+extern void fixup_cpu (struct uae_prefs *prefs);
+extern void check_prefs_changed_cpu (void);
+extern void error_log (const TCHAR*, ...);
 
-void check_prefs_changed_cpu (void);
-
-#endif /* OPTIONS_CPU_H */
+#endif /* UAE_OPTIONS_H */

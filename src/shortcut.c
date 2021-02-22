@@ -14,7 +14,7 @@ const char ShortCut_fileid[] = "Hatari shortcut.c : " __DATE__ " " __TIME__;
 #include "dialog.h"
 #include "file.h"
 #include "m68000.h"
-#include "dimension.h"
+#include "dimension.hpp"
 #include "reset.h"
 #include "screen.h"
 #include "configuration.h"
@@ -143,17 +143,28 @@ static void ShortCut_Pause(void)
  */
 static void ShortCut_Dimension(void)
 {
-	if (ConfigureParams.System.nMachineType==NEXT_STATION || !ConfigureParams.Dimension.bEnabled) {
+	if (ConfigureParams.System.nMachineType==NEXT_STATION ||
+        ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DUAL) {
 		return;
 	}
-	
-    if (ConfigureParams.Screen.nMonitorType != MONITOR_TYPE_DUAL) {
-        if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
-            ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
+    
+    while (ConfigureParams.Screen.nMonitorNum < ND_MAX_BOARDS) {
+        if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_CPU) {
+            ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DIMENSION;
+            ConfigureParams.Screen.nMonitorNum = 0;
         } else {
-            ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_DIMENSION;
+            ConfigureParams.Screen.nMonitorNum++;
+        }
+        if (ConfigureParams.Screen.nMonitorNum==ND_MAX_BOARDS) {
+            ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
+            ConfigureParams.Screen.nMonitorNum = 0;
+            break;
+        }
+        if (ConfigureParams.Dimension.board[ConfigureParams.Screen.nMonitorNum].bEnabled) {
+            break;
         }
     }
+    
 	Statusbar_UpdateInfo();
 }
 

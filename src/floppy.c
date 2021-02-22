@@ -18,6 +18,7 @@
 
 #define IO_SEG_MASK	0x1FFFF
 
+FloppyBuffer flp_buffer;
 
 /* Controller */
 struct {
@@ -320,13 +321,13 @@ Uint8 cmd_data_size[] = {
     0,8,0,0,0,8,0,0
 };
 
-bool cmd_phase = false;
-int cmd_size = 0;
-int cmd_limit = 0;
-Uint8 command;
-Uint8 cmd_data[8];
+static bool cmd_phase = false;
+static int cmd_size = 0;
+static int cmd_limit = 0;
+static Uint8 command;
+static Uint8 cmd_data[8];
 
-int result_size = 0;
+static int result_size = 0;
 
 static void floppy_interrupt(void) {
     Log_Printf(LOG_FLP_CMD_LEVEL,"[Floppy] Interrupt.");

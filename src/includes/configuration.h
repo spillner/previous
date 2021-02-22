@@ -5,10 +5,18 @@
   your option any later version. Read the file gpl.txt for details.
 */
 
+#pragma once
+
 #ifndef HATARI_CONFIGURATION_H
 #define HATARI_CONFIGURATION_H
 
+
 #include <stdio.h>
+#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 #define ENABLE_TESTING 0
 
@@ -44,6 +52,8 @@ typedef struct
     char szRom030FileName[FILENAME_MAX];
     char szRom040FileName[FILENAME_MAX];
     char szRomTurboFileName[FILENAME_MAX];
+    bool bUseCustomMac;
+    int nRomCustomMac[6];
 } CNF_ROM;
 
 
@@ -209,9 +219,18 @@ typedef struct {
 
 
 /* Ethernet configuration */
+typedef enum
+{
+    ENET_SLIRP,
+    ENET_PCAP
+} ENET_INTERFACE;
+
 typedef struct {
     bool bEthernetConnected;
     bool bTwistedPair;
+    ENET_INTERFACE nHostInterface;
+    char szInterfaceName[FILENAME_MAX];
+    char szNFSroot[FILENAME_MAX];
 } CNF_ENET;
 
 typedef enum
@@ -225,6 +244,7 @@ typedef enum
 typedef struct
 {
   MONITORTYPE nMonitorType;
+  int nMonitorNum;
   bool bFullScreen;
   bool bShowStatusbar;
   bool bShowDriveLed;
@@ -302,13 +322,20 @@ typedef struct
   bool bMMU;                      /* TRUE if MMU is enabled */
 } CNF_SYSTEM;
 
+/* NeXT Dimension configuration */
+#define ND_MAX_BOARDS   3
 typedef struct
 {
     bool bEnabled;
-    bool bI860Thread;
-	bool bMainDisplay;
     int  nMemoryBankSize[4];
     char szRomFileName[FILENAME_MAX];
+} NDBOARD;
+
+typedef struct {
+    bool bI860Thread;
+    bool bMainDisplay;
+    int nMainDisplay;
+    NDBOARD board[ND_MAX_BOARDS];
 } CNF_ND;
 
 /* State of system is stored in this structure */
@@ -346,9 +373,13 @@ void Configuration_Apply(bool bReset);
 int Configuration_CheckMemory(int *banksize);
 int  Configuration_CheckDimensionMemory(int *banksize);
 void Configuration_CheckDimensionSettings(void);
-void Configuration_CheckEthernetSettings();
+void Configuration_CheckEthernetSettings(void);
 void Configuration_Load(const char *psFileName);
 void Configuration_Save(void);
 void Configuration_MemorySnapShot_Capture(bool bSave);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif

@@ -19,6 +19,10 @@
 #ifndef HATARI_M68000_H
 #define HATARI_M68000_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+    
 #include "sysdeps.h"
 #include "memory.h"
 #include "newcpu.h"     /* for regs */
@@ -116,14 +120,27 @@ static inline void M68000_SetSR(Uint16 v)
 	regs.sr = v;
 	MakeFromSR();
 }
+    
+# define M68000_GetPC()     m68k_getpc()
+    
+# define M68000_InstrPC		regs.instruction_pc
+# define M68000_CurrentOpcode	regs.opcode
 
 # define M68000_SetSpecial(flags)   set_special(flags)
 # define M68000_UnsetSpecial(flags) unset_special(flags)
 
 
-/* bus error mode */
-#define BUS_ERROR_WRITE 0
-#define BUS_ERROR_READ 1
+/* Some define's for bus error (see newcpu.c) */
+/* Bus error read/write mode */
+#define BUS_ERROR_WRITE		0
+#define BUS_ERROR_READ		1
+/* Bus error access size */
+#define BUS_ERROR_SIZE_BYTE	1
+#define BUS_ERROR_SIZE_WORD	2
+#define BUS_ERROR_SIZE_LONG	4
+/* Bus error access type */
+#define BUS_ERROR_ACCESS_INSTR	0
+#define BUS_ERROR_ACCESS_DATA	1
 
 
 /* bus access mode */
@@ -167,7 +184,11 @@ void M68000_Reset(bool bCold);
 void M68000_Stop(void);
 void M68000_Start(void);
 void M68000_CheckCpuSettings(void);
-void M68000_BusError(Uint32 addr, bool bReadWrite);
-void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource);
+void M68000_BusError (Uint32 addr, int ReadWrite, int Size, int AccessType, uae_u32 val);
+   void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource);
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+        
 #endif

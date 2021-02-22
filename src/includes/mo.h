@@ -6,11 +6,14 @@ void MO_InterruptHandler(void);
 void MO_IO_Handler(void);
 void ECC_IO_Handler(void);
 
-struct {
+typedef struct {
     Uint8 data[1296];
     Uint32 size;
     Uint32 limit;
-} ecc_buffer[2];
+} OpticalDiskBuffer;
+
+extern OpticalDiskBuffer ecc_buffer[2];
+
 extern int eccin;
 extern int eccout;
 

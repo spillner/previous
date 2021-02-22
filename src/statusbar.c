@@ -34,7 +34,7 @@ const char Statusbar_fileid[] = "Hatari statusbar.c : " __DATE__ " " __TIME__;
 #include "statusbar.h"
 #include "screen.h"
 #include "video.h"
-#include "dimension.h"
+#include "dimension.hpp"
 
 #define DEBUG 0
 #if DEBUG
@@ -80,7 +80,7 @@ static Uint32 LedColorOn, LedColorOnWP, LedColorOff, SysColorOn, SysColorOff, Ds
 static Uint32 NdColorOn, NdColorCS8, NdColorOff;
 static Uint32 GrayBg, LedColorBg;
 
-#define MAX_MESSAGE_LEN 69 /* changed for Previous, was 50 */
+#define MAX_MESSAGE_LEN 69
 typedef struct msg_item {
 	struct msg_item *next;
 	char msg[MAX_MESSAGE_LEN+1];
@@ -379,16 +379,18 @@ static char *Statusbar_AddString(char *buffer, const char *more)
 void Statusbar_UpdateInfo(void)
 {
 	char *end = DefaultMessage.msg;
-	char memsize[8];
+	char memsize[16];
+    char slot[16];
 	
 	/* Message for NeXTdimension */
-	if (ConfigureParams.Dimension.bEnabled &&
-		ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+	if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
 		end = Statusbar_AddString(end, "33MHz/i860XR/");
-		sprintf(memsize, "%iMB/",Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize));
+		sprintf(memsize, "%iMB/",Configuration_CheckDimensionMemory(ConfigureParams.Dimension.board[ConfigureParams.Screen.nMonitorNum].nMemoryBankSize));
 		end = Statusbar_AddString(end, memsize);
-		end = Statusbar_AddString(end, "NeXTdimension");
-		*end = '\0';
+		end = Statusbar_AddString(end, "NeXTdimension/");
+        sprintf(slot, "Slot%i", ND_SLOT(ConfigureParams.Screen.nMonitorNum));
+        end = Statusbar_AddString(end, slot);
+        *end = '\0';
 		assert(end - DefaultMessage.msg < MAX_MESSAGE_LEN);
 		DefaultMessage.shown = false;
 		return;
@@ -434,11 +436,13 @@ void Statusbar_UpdateInfo(void)
         default:
             break;
     }
-    if (ConfigureParams.System.bTurbo)
-        end = Statusbar_AddString(end, (ConfigureParams.System.nCpuFreq==40)?" Nitro":" Turbo");
+    if (ConfigureParams.System.bTurbo) {
+        end = Statusbar_AddString(end, (ConfigureParams.System.nCpuFreq==40)?" Nitro":" Turbo");		
+	}
 
-    if (ConfigureParams.System.bColor)
-        end = Statusbar_AddString(end, " Color");
+    if (ConfigureParams.System.bColor) {
+        end = Statusbar_AddString(end, " Color");		
+	}
 
 	*end = '\0';
 

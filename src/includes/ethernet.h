@@ -27,17 +27,14 @@ void EN_CounterLo_Read(void);
 void EN_CounterHi_Read(void);
 
 
-struct {
+typedef struct {
     Uint8 data[64*1024];
     int size;
     int limit;
-} enet_tx_buffer;
+} EthernetBuffer;
 
-struct {
-    Uint8 data[64*1024];
-    int size;
-    int limit;
-} enet_rx_buffer;
+extern EthernetBuffer enet_tx_buffer;
+extern EthernetBuffer enet_rx_buffer;
 
 void ENET_IO_Handler(void);
 void Ethernet_Reset(bool hard);

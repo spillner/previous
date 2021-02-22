@@ -3,6 +3,8 @@
 #include "enet_slirp.h"
 #include "queue.h"
 #include "host.h"
+#include "libslirp.h"
+#include "nfs/nfsd.h"
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -14,19 +16,6 @@ int inet_aton(const char *cp, struct in_addr *addr);
 
 /****************/
 /* -- SLIRP -- */
-
-
-/* slirp prototypes */
-int slirp_init(void);
-int slirp_redir(int is_udp, int host_port, struct in_addr guest_addr, int guest_port);
-void slirp_input(const uint8_t *pkt, int pkt_len);
-int slirp_select_fill(int *pnfds,
-                              fd_set *readfds, fd_set *writefds, fd_set *xfds);
-void slirp_select_poll(fd_set *readfds, fd_set *writefds, fd_set *xfds);
-void slirp_exit(int);
-void slirp_debug_init(char*,int);
-void slirp_output(const unsigned char *pkt, int pkt_len);
-int slirp_can_output(void);
 
 /* queue prototypes */
 queueADT	slirpq;
@@ -137,14 +126,13 @@ void enet_slirp_stop(void) {
     }
 }
 
-void enet_slirp_start(void) {
+void enet_slirp_start(Uint8 *mac) {
     struct in_addr guest_addr;
     
     if (!slirp_inited) {
         Log_Printf(LOG_WARN, "Initializing SLIRP");
         slirp_inited=1;
-        slirp_init();
-        inet_aton("10.0.2.15", &guest_addr);
+        slirp_init(&guest_addr);
         slirp_redir(0, 42323, guest_addr, 23);
     }
     if (slirp_inited && !slirp_started) {
@@ -154,4 +142,7 @@ void enet_slirp_start(void) {
         slirp_mutex=SDL_CreateMutex();
         tick_func_handle=SDL_CreateThread(tick_func,"SLiRPTickThread", (void *)NULL);
     }
+    
+    /* (re)start local nfs deamon */
+    nfsd_start();
 }

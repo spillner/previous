@@ -96,8 +96,8 @@ void DSP_Data2_Write(void);
 void DSP_Data3_Read(void);
 void DSP_Data3_Write(void);
 
-Uint8 dsp_intr_at_block_end;
-Uint8 dsp_dma_unpacked;
+extern Uint8 dsp_intr_at_block_end;
+extern Uint8 dsp_dma_unpacked;
 void DSP_SetIRQB(void);
 
 #endif /* DSP_H */

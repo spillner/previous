@@ -54,8 +54,7 @@ bool Dialog_DoProperty(void)
 
 	/* Check if reset is required and ask user if he really wants to continue then */
 	if (bOKDialog && !bForceReset
-	    && Change_DoNeedReset(&current, &ConfigureParams)
-	    && ConfigureParams.Log.nAlertDlgLogLevel > LOG_FATAL) {
+	    && Change_DoNeedReset(&current, &ConfigureParams)) {
 		bOKDialog = DlgAlert_Query("The emulated system must be "
 		                           "reset to apply these changes. "
 		                           "Apply changes now and reset "
@@ -125,14 +124,17 @@ void Dialog_CheckFiles(void) {
                 return;
         }
     }
-    while (ConfigureParams.Dimension.bEnabled && !File_Exists(ConfigureParams.Dimension.szRomFileName)) {
-        sprintf(szDefault, "%s%cdimension_eeprom.bin", Paths_GetWorkingDir(), PATHSEP);
-        DlgMissing_Rom("NeXTdimension", ConfigureParams.Dimension.szRomFileName,
-                       szDefault, &ConfigureParams.Dimension.bEnabled);
-        if (bQuitProgram) {
-            Main_RequestQuit();
-            if (bQuitProgram)
-                return;
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        while (ConfigureParams.Dimension.board[i].bEnabled && !File_Exists(ConfigureParams.Dimension.board[i].szRomFileName)) {
+            sprintf(szMachine, "NeXTdimension at slot %i", i*2+2);
+            sprintf(szDefault, "%s%cdimension_eeprom.bin", Paths_GetWorkingDir(), PATHSEP);
+            DlgMissing_Rom(szMachine, ConfigureParams.Dimension.board[i].szRomFileName,
+                           szDefault, &ConfigureParams.Dimension.board[i].bEnabled);
+            if (bQuitProgram) {
+                Main_RequestQuit();
+                if (bQuitProgram)
+                    return;
+            }
         }
     }
     

@@ -313,7 +313,7 @@ Uint32 tmc_lget(uaecptr addr) {
 			val = tmc.nitro;
 		} else {
 			Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
-			M68000_BusError(addr, 1);
+			M68000_BusError(addr, BUS_ERROR_READ, BUS_ERROR_SIZE_LONG, BUS_ERROR_ACCESS_DATA, 0);
 		}
 		return val;
 	}
@@ -398,7 +398,7 @@ void tmc_lput(uaecptr addr, Uint32 l) {
 			tmc.nitro = l&0x0000011F;
 		} else {
 			Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
-			M68000_BusError(addr, 0);
+			M68000_BusError(addr, BUS_ERROR_WRITE, BUS_ERROR_SIZE_LONG, BUS_ERROR_ACCESS_DATA, l);
 		}
 		return;
 	}

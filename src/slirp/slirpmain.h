@@ -28,6 +28,9 @@ extern int ctty_closed;
  */
 #define TIME_DIFF(x,y) (x)-(y) < 0 ? ~0-(y)+(x) : (x)-(y)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern char *slirp_tty;
 extern char *exec_shell;
 extern u_int curtime;
@@ -45,6 +48,9 @@ extern int ppp_exit;
 extern int so_options;
 extern int tcp_keepintvl;
 extern uint8_t client_ethaddr[6];
+#ifdef __cplusplus
+}
+#endif
 
 #define PROTO_SLIP 0x1
 #ifdef USE_PPP

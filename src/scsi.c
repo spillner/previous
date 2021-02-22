@@ -95,6 +95,9 @@
 #define CMD_SHIP            0x1B    /* Ship drive */
 #define CMD_READ_CAPACITY1  0x25    /* Read capacity (class 1) */
 
+SCSIBusStatus SCSIbus;
+SCSIBuffer scsi_buffer;
+
 void SCSI_Emulate_Command(Uint8 *cdb);
 
 void SCSI_Inquiry(Uint8 *cdb);
@@ -190,7 +193,7 @@ void SCSI_Eject(Uint8 i) {
     SCSIdisk[i].shadow = NULL;
 }
 
-void SCSI_EjectDisk(Uint8 i) {
+static void SCSI_EjectDisk(Uint8 i) {
     ConfigureParams.SCSI.target[i].bDiskInserted = false;
     ConfigureParams.SCSI.target[i].szImageName[0] = '\0';
     

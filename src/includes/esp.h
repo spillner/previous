@@ -1,9 +1,11 @@
 /* ESP DMA control and status registers */
 
-struct {
+typedef struct {
     Uint8 control;
     Uint8 status;
-} esp_dma;
+} ESPDMASTATUS;
+
+extern ESPDMASTATUS esp_dma;
 
 #define ESPCTRL_CLKMASK     0xc0    /* clock selection bits */
 #define ESPCTRL_CLK10MHz    0x00

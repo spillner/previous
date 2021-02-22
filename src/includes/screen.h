@@ -8,6 +8,10 @@
 #ifndef HATARI_SCREEN_H
 #define HATARI_SCREEN_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #include <SDL_video.h>    /* for SDL_Surface */
 
 #if 1
@@ -29,6 +33,10 @@ void Screen_ModeChanged(void);
 bool Update_StatusBar(void);
 void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects);
 void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
-void blitDimension(SDL_Texture* tex);
+void blitDimension(Uint32* vram, SDL_Texture* tex);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif  /* ifndef HATARI_SCREEN_H */

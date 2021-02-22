@@ -13,7 +13,7 @@
 #include "ioMemTables.h"
 #include "m68000.h"
 #include "configuration.h"
-#include "dimension.h"
+#include "dimension.hpp"
 #include "sysReg.h"
 #include "rtcnvram.h"
 
@@ -875,11 +875,14 @@ void nvram_init(void) {
     }
 
 	/* Set prefered console slot */
-	if (ConfigureParams.Dimension.bEnabled) {
-		rtc.ram[17] |= USE_CONSOLE_SLOT;
-		if (ConfigureParams.Dimension.bMainDisplay) {
-			rtc.ram[17] |= (ND_SLOT>>1)<<3;
-		}
+    rtc.ram[17] |= USE_CONSOLE_SLOT;
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        if (ConfigureParams.Dimension.bMainDisplay &&
+            (ConfigureParams.Dimension.nMainDisplay == i) &&
+            ConfigureParams.Dimension.board[i].bEnabled) {
+            rtc.ram[17] |= (ND_SLOT(i)>>1)<<3;
+            break;
+        }
     }
 
 	/* Re-calculate checksum */

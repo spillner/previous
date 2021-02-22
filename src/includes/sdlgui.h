@@ -21,7 +21,8 @@ enum
   SGRADIOBUT,
   SGCHECKBOX,
   SGPOPUP,
-  SGSCROLLBAR
+  SGSCROLLBAR,
+  SGHIDDEN
 };
 
 
@@ -61,8 +62,8 @@ typedef struct
   char *txt;            /* Text string */
 }  SGOBJ;
 
-int sdlgui_fontwidth;	/* Width of the actual font */
-int sdlgui_fontheight;	/* Height of the actual font */
+extern int sdlgui_fontwidth;	/* Width of the actual font */
+extern int sdlgui_fontheight;	/* Height of the actual font */
 
 int SDLGui_Init(void);
 int SDLGui_UnInit(void);

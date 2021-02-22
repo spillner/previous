@@ -1,4 +1,4 @@
-enum {
+typedef enum {
     CHANNEL_SCSI,       // 0x00000010
     CHANNEL_SOUNDOUT,   // 0x00000040
     CHANNEL_DISK,       // 0x00000050

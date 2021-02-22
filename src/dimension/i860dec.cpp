@@ -83,9 +83,7 @@ void i860_cpu_device::gen_interrupt()
 	}
     SET_EPSR_INT (1);
 
-#if TRACE_EXT_INT
-    Log_Printf(LOG_WARN, "[i860] i860_gen_interrupt: External interrupt received %s", GET_PSR_IM() ? "[PSR.IN set, preparing to trap]" : "[ignored (interrupts disabled)]");
-#endif
+    Log_Printf(TRACE_EXT_INT, "[i860] i860_gen_interrupt: External interrupt received %s", GET_PSR_IM() ? "[PSR.IN set, preparing to trap]" : "[ignored (interrupts disabled)]");
 #if ENABLE_PERF_COUNTERS
     m_intrs++;
 #endif
@@ -152,7 +150,7 @@ UINT64 i860_cpu_device::ifetch64(const UINT32 pc, const UINT32 vaddr, int const 
         insn64 |= rdcs8(paddr+1); insn64 <<= 8;
         insn64 |= rdcs8(paddr+0);
     } else {
-        nd_board_rd64_be(paddr, (UINT32*)&insn64);
+        NextDimension::i860_rd64_be(nd, paddr, (UINT32*)&insn64);
     }
     m_icache[cidx] = insn64;
     
@@ -230,7 +228,7 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
 
 	/* Get page directory entry at DTB:DIR:00.  */
 	pg_dir_entry_a = dtb | (vdir << 2);
-    nd_board_rd32_le(pg_dir_entry_a, &pg_dir_entry);
+    NextDimension::i860_rd32_le(nd, pg_dir_entry_a, &pg_dir_entry);
 
 	/* Check for non-present PDE.  */
 	if (!(pg_dir_entry & 1))
@@ -275,7 +273,7 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
 	/* Get page table entry at PFA1:PAGE:00.  */
 	pfa1 = pg_dir_entry & I860_PAGE_FRAME_MASK;
 	pg_tbl_entry_a = pfa1 | (vpage << 2);
-    nd_board_rd32_le(pg_tbl_entry_a, &pg_tbl_entry);
+    NextDimension::i860_rd32_le(nd, pg_tbl_entry_a, &pg_tbl_entry);
 
 	/* Check for non-present PTE.  */
 	if (!(pg_tbl_entry & 1))
@@ -318,8 +316,8 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
 	/* Update A bit and check D bit.  */
 	ttpde = pg_dir_entry | 0x20;
 	ttpte = pg_tbl_entry | 0x20;
-    nd_board_wr32_le(pg_dir_entry_a, &ttpde);
-    nd_board_wr32_le(pg_tbl_entry_a, &ttpte);
+    NextDimension::i860_wr32_le(nd, pg_dir_entry_a, &ttpde);
+    NextDimension::i860_wr32_le(nd, pg_tbl_entry_a, &ttpte);
 
 	if (is_write && is_dataref && (pg_tbl_entry & 0x40) == 0)
 	{
@@ -338,9 +336,7 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
     
 	ret = pfa2 | voffset;
 
-#if TRACE_ADDR_TRANSLATION
-	Log_Printf(LOG_WARN, "[i860] get_address_translation: virt(%08X) -> phys(%08X)\n", vaddr, ret);
-#endif
+	Log_Printf(TRACE_ADDR_TRANSLATION, "[i860] get_address_translation: virt(%08X) -> phys(%08X)\n", vaddr, ret);
 
 	return ret;
 }
@@ -350,9 +346,7 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
      size = size of write in bytes.
      data = data to write.  */
 inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
-#if TRACE_RDWR_MEM
-	Log_Printf(LOG_WARN, "[i860] wrmem (ATE=%d) addr = %08X, size = %d, data = %08X\n", GET_DIRBASE_ATE (), addr, size, data); fflush(0);
-#endif
+	Log_Printf(TRACE_RDWR_MEM, "[i860] wrmem (ATE=%d) addr = %08X, size = %d, data = %08X\n", GET_DIRBASE_ATE (), addr, size, *data);
 
 #if ENABLE_DEBUGGER
     dbg_check_wr(addr, size, data);
@@ -364,9 +358,7 @@ inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
 		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 1 /* is_write */);
 		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
 		{
-#if TRACE_PAGE_FAULT
-            Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (writememi_emu) virt=%08X", m_pc, addr);
-#endif
+            Log_Printf(TRACE_PAGE_FAULT, "[i860] %08X: ## Page fault (writememi_emu) virt=%08X", m_pc, addr);
 			SET_EXITING_MEMRW(EXITING_WRITEMEM);
 			return;
 		}
@@ -384,7 +376,7 @@ inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
 #endif
     
 	/* Now do the actual write.  */
-    wrmem[size](addr, (UINT32*)data);
+    wrmem[size](nd, addr, (UINT32*)data);
 }
 
 
@@ -394,9 +386,7 @@ inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
      dest = memory to put read data.  */
 inline void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
 {
-#if TRACE_RDWR_MEM
-	Log_Printf(LOG_WARN, "[i860] fp_rdmem (ATE=%d) addr = %08X, size = %d\n", GET_DIRBASE_ATE (), addr, size); fflush(0);
-#endif
+	Log_Printf(TRACE_RDWR_MEM, "[i860] fp_rdmem (ATE=%d) addr = %08X, size = %d\n", GET_DIRBASE_ATE (), addr, size);
     
 	/* If virtual mode, do translation.  */
 	if (GET_DIRBASE_ATE ())
@@ -404,10 +394,8 @@ inline void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 0 /* is_write */);
 		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
 		{
-#if TRACE_PAGE_FAULT
-			Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (fp_readmem_emu) virt=%08X",m_pc,addr);
+			Log_Printf(TRACE_PAGE_FAULT, "[i860] %08X: ## Page fault (fp_readmem_emu) virt=%08X",m_pc,addr);
 //            debugger();
-#endif
 			SET_EXITING_MEMRW(EXITING_FPREADMEM);
 			return;
 		}
@@ -423,7 +411,7 @@ inline void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		return;
 	}
 #endif
-    rdmem[size](addr, (UINT32*)dest);
+    rdmem[size](nd, addr, (UINT32*)dest);
 }
 
 
@@ -434,9 +422,7 @@ inline void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
      wmask = bit mask of bytes to write (only for pst.d).  */
 inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask)
 {
-#if TRACE_RDWR_MEM
-	Log_Printf(LOG_WARN, "[i860] fp_wrmem (ATE=%d) addr = %08X, size = %d", GET_DIRBASE_ATE (), addr, size); fflush(0);
-#endif
+	Log_Printf(TRACE_RDWR_MEM, "[i860] fp_wrmem (ATE=%d) addr = %08X, size = %d", GET_DIRBASE_ATE (), addr, size);
 
 	/* If virtual mode, do translation.  */
 	if (GET_DIRBASE_ATE ())
@@ -444,10 +430,8 @@ inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, U
 		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 1 /* is_write */);
 		if (PENDING_TRAP() && GET_PSR_DAT ())
 		{
-#if TRACE_PAGE_FAULT
-			Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (fp_writememi_emu) virt=%08X", m_pc,addr);
+			Log_Printf(TRACE_PAGE_FAULT, "[i860] %08X: ## Page fault (fp_writememi_emu) virt=%08X", m_pc,addr);
 //            debugger();
-#endif
 			SET_EXITING_MEMRW(EXITING_WRITEMEM);
 			return;
 		}
@@ -465,16 +449,16 @@ inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, U
 #endif
         
     if(size == 8 && wmask != 0xff) {
-        if (wmask & 0x80) wrmem[1](addr+0, (UINT32*)&data[0]);
-        if (wmask & 0x40) wrmem[1](addr+1, (UINT32*)&data[1]);
-        if (wmask & 0x20) wrmem[1](addr+2, (UINT32*)&data[2]);
-        if (wmask & 0x10) wrmem[1](addr+3, (UINT32*)&data[3]);
-        if (wmask & 0x08) wrmem[1](addr+4, (UINT32*)&data[4]);
-        if (wmask & 0x04) wrmem[1](addr+5, (UINT32*)&data[5]);
-        if (wmask & 0x02) wrmem[1](addr+6, (UINT32*)&data[6]);
-        if (wmask & 0x01) wrmem[1](addr+7, (UINT32*)&data[7]);
+        if (wmask & 0x80) wrmem[1](nd, addr+0, (UINT32*)&data[0]);
+        if (wmask & 0x40) wrmem[1](nd, addr+1, (UINT32*)&data[1]);
+        if (wmask & 0x20) wrmem[1](nd, addr+2, (UINT32*)&data[2]);
+        if (wmask & 0x10) wrmem[1](nd, addr+3, (UINT32*)&data[3]);
+        if (wmask & 0x08) wrmem[1](nd, addr+4, (UINT32*)&data[4]);
+        if (wmask & 0x04) wrmem[1](nd, addr+5, (UINT32*)&data[5]);
+        if (wmask & 0x02) wrmem[1](nd, addr+6, (UINT32*)&data[6]);
+        if (wmask & 0x01) wrmem[1](nd, addr+7, (UINT32*)&data[7]);
     } else {
-        wrmem[size](addr, (UINT32*)data);
+        wrmem[size](nd, addr, (UINT32*)data);
     }
 }
 
@@ -505,7 +489,7 @@ void i860_cpu_device::insn_ld_ctrl (UINT32 insn)
 	if (csrc2 > 5)
 	{
 		/* Control register not between 0..5.  Undefined i860XR behavior.  */
-		Log_Printf(LOG_WARN, "[i860:%08X] insn_ld_from_ctrl: bad creg in ld.c (ignored)", m_pc);
+		Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_ld_from_ctrl: bad creg in ld.c (ignored)", m_pc);
 		return;
 	}
 #endif
@@ -539,7 +523,7 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 	if (csrc2 > 5)
 	{
 		/* Control register not between 0..5.  Undefined i860XR behavior.  */
-		Log_Printf(LOG_WARN, "[i860:%08X] insn_st_to_ctrl: bad creg in st.c (ignored)", m_pc);
+		Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_st_to_ctrl: bad creg in st.c (ignored)", m_pc);
 		return;
 	}
 #endif
@@ -606,7 +590,7 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 		UINT32 tmp = m_cregs[CR_FSR] & ~0x003e01ef;
 		m_cregs[CR_FSR] = enew | tmp;
 
-		float_set_rounding_mode (GET_FSR_RM());
+		float_set_rounding_mode (GET_FSR_RM(), &m_fpcs);
 	}
 	else if (csrc2 != CR_FIR)
 		m_cregs[csrc2] = get_iregval (isrc1);
@@ -643,7 +627,7 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (size - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
+		Log_Printf(TRACE_UNALIGNED_MEM, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
 		m_flow |= TRAP_NORMAL;
 		return;
@@ -743,7 +727,7 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (size - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
+		Log_Printf(TRACE_UNALIGNED_MEM, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
 		m_flow |= TRAP_NORMAL;
 		return;
@@ -759,7 +743,7 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 		if (isrc1 == isrc2)
 		{
 			/* Undefined i860XR behavior.  */
-			Log_Printf(LOG_WARN, "[i860:%08X] insn_fsty: isrc1 = isrc2 in fst with auto-inc (ignored)", m_pc);
+			Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_fsty: isrc1 = isrc2 in fst with auto-inc (ignored)", m_pc);
 			return;
 		}
 #endif
@@ -824,7 +808,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		if (isrc1 == isrc2)
 		{
 			/* Undefined i860XR behavior.  */
-			Log_Printf(LOG_WARN, "[i860:%08X] insn_fldy: isrc1 = isrc2 in fst with auto-inc (ignored)", m_pc);
+			Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_fldy: isrc1 = isrc2 in fst with auto-inc (ignored)", m_pc);
 			return;
 		}
 #endif
@@ -833,7 +817,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (size - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
+		Log_Printf(TRACE_UNALIGNED_MEM, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
         m_flow |= TRAP_NORMAL;
 		return;
@@ -917,7 +901,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 
 #if TRACE_UNDEFINED_I860
 	if (!(ps == 0 || ps == 1 || ps == 2))
-		Log_Printf(LOG_WARN, "[i860:%08X] insn_pstd: Undefined i860XR behavior, invalid value %d for pixel size", m_pc, ps);
+		Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_pstd: Undefined i860XR behavior, invalid value %d for pixel size", m_pc, ps);
 #endif
 
 #if TRACE_UNDEFINED_I860
@@ -926,7 +910,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 	if (insn & 0x6)
 	{
 		/* Undefined i860XR behavior.  */
-		Log_Printf(LOG_WARN, "[i860:%08X] insn_pstd: bad operand size specifier", m_pc);
+		Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_pstd: bad operand size specifier", m_pc);
 	}
 #endif
 
@@ -939,7 +923,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (8 - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
+		Log_Printf(TRACE_UNALIGNED_MEM, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
 		m_flow |= TRAP_NORMAL;
 		return;
@@ -2066,7 +2050,7 @@ void i860_cpu_device::insn_calli (UINT32 insn)
 	if (isrc1 == 1)
 	{
 		/* Src1 must not be r1.  */
-		Log_Printf(LOG_WARN, "[i860:%08X] insn_calli: isrc1 = r1 on a calli", m_pc);
+		Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_calli: isrc1 = r1 on a calli", m_pc);
 	}
 #endif
 
@@ -2106,7 +2090,7 @@ void i860_cpu_device::insn_bla (UINT32 insn)
 	if (isrc1 == isrc2)
 	{
 		/* Src1 and src2 the same is undefined i860XR behavior.  */
-		Log_Printf(LOG_WARN,  "[i860:%08X] insn_bla: isrc1 and isrc2 are the same (ignored)", m_pc);
+		Log_Printf(TRACE_UNDEFINED_I860,  "[i860:%08X] insn_bla: isrc1 and isrc2 are the same (ignored)", m_pc);
 		return;
 	}
 #endif
@@ -3579,11 +3563,10 @@ void i860_cpu_device::insn_faddp (UINT32 insn)
 		m_merge = ((m_merge >> 8) & ~0xff000000ff000000ULL);
 		m_merge |= (r & 0xff000000ff000000ULL);
 	}
-#if TRACE_UNDEFINED_I860
-	else
-		Log_Printf(LOG_WARN, "[i860:%08X] insn_faddp: Undefined i860XR behavior, invalid value %d for pixel size", m_pc, ps);
-#endif
-
+    else {
+		Log_Printf(TRACE_UNDEFINED_I860, "[i860:%08X] insn_faddp: Undefined i860XR behavior, invalid value %d for pixel size", m_pc, ps);
+    }
+    
 	/* FIXME: Copy result-status bit IRP to fsr from last stage.  */
 	/* FIXME: Scalar version flows through all stages.  */
 	if (!piped)

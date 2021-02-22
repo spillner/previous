@@ -17,11 +17,13 @@ void Floppy_Reset(void);
 int Floppy_Insert(int drive);
 void Floppy_Eject(int drive);
 
-struct {
+typedef struct {
     Uint8 data[1024];
     Uint32 size;
     Uint32 limit;
-} flp_buffer;
+} FloppyBuffer;
+
+extern FloppyBuffer flp_buffer;
 
 extern Uint8 floppy_select;
 void set_floppy_select(Uint8 sel, bool osp);

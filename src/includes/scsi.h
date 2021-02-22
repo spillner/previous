@@ -8,10 +8,12 @@
 #define PHASE_MO      0x06 /* message out */
 #define PHASE_MI      0x07 /* message in */
 
-struct {
+typedef struct {
     Uint8 target;
     Uint8 phase;
-} SCSIbus;
+} SCSIBusStatus;
+
+extern SCSIBusStatus SCSIbus;
 
 
 /* Command Descriptor Block */
@@ -20,12 +22,14 @@ struct {
 
 /* This buffer temporarily stores data to be written to memory or disk */
 
-struct {
+typedef struct {
     Uint8 data[512]; /* FIXME: BLOCKSIZE */
     int limit;
     int size;
     bool disk;
-} scsi_buffer;
+} SCSIBuffer;
+
+extern SCSIBuffer scsi_buffer;
 
 
 void SCSI_Init(void);

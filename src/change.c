@@ -19,7 +19,6 @@ const char Change_fileid[] = "Hatari change.c : " __DATE__ " " __TIME__;
 #include "dialog.h"
 #include "ioMem.h"
 #include "m68000.h"
-#include "options.h"
 #include "reset.h"
 #include "screen.h"
 #include "statusbar.h"
@@ -45,7 +44,7 @@ const char Change_fileid[] = "Hatari change.c : " __DATE__ " " __TIME__;
  */
 bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
 {
-    int i;
+    int i, j;
     
     /* Did we change ROM file? */
     if (current->System.nMachineType == NEXT_CUBE030 && strcmp(current->Rom.szRom030FileName, changed->Rom.szRom030FileName)) {
@@ -61,6 +60,26 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
             printf("romturbo reset\n");
             return true;
         }
+    }
+    
+    /* Did we change MAC address? */
+    if (current->Rom.bUseCustomMac != changed->Rom.bUseCustomMac) {
+        printf("mac reset\n");
+        return true;
+    }
+    if (current->Rom.bUseCustomMac) {
+        for (i = 0; i < 6; i++) {
+            if (current->Rom.nRomCustomMac[i] != changed->Rom.nRomCustomMac[i]) {
+                printf("mac reset\n");
+                return true;
+            }
+        }
+    }
+    
+    /* Did we change NFS root directory? */
+    if (strcmp(current->Ethernet.szNFSroot, changed->Ethernet.szNFSroot)) {
+        printf("nfs reset\n");
+        return true;
     }
     
     /* Did we change machine type? */
@@ -201,18 +220,24 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
     }
     
     /* Did we change NeXTdimension? */
-    if (current->Dimension.bEnabled != changed->Dimension.bEnabled ||
-        current->Dimension.bI860Thread != changed->Dimension.bI860Thread ||
-		current->Dimension.bMainDisplay != changed->Dimension.bMainDisplay ||
-        strcmp(current->Dimension.szRomFileName, changed->Dimension.szRomFileName)) {
-        printf("dimension reset\n");
-		return true;
-    }
-    for (i = 0; i < 4; i++) {
-        if (current->Dimension.nMemoryBankSize[i] != changed->Dimension.nMemoryBankSize[i]) {
-            printf("dimension memory size reset\n");
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        if (current->Dimension.board[i].bEnabled != changed->Dimension.board[i].bEnabled ||
+            strcmp(current->Dimension.board[i].szRomFileName, changed->Dimension.board[i].szRomFileName)) {
+            printf("dimension reset\n");
             return true;
         }
+        for (j = 0; j < 4; j++) {
+            if (current->Dimension.board[i].nMemoryBankSize[j] != changed->Dimension.board[i].nMemoryBankSize[j]) {
+                printf("dimension memory size reset\n");
+                return true;
+            }
+        }
+    }
+    if (current->Dimension.bI860Thread != changed->Dimension.bI860Thread ||
+        current->Dimension.bMainDisplay != changed->Dimension.bMainDisplay ||
+        current->Dimension.nMainDisplay != changed->Dimension.nMainDisplay) {
+        printf("dimension display reset\n");
+        return true;
     }
 	
 	/* Did we change monitor count? */
@@ -250,7 +275,10 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
     /* Note: SCSI, MO and floppy disk insert/eject called from GUI */
     
     /* Do we need to change Ethernet connection? */
-    if (!NeedReset && current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected) {
+    if (!NeedReset &&
+        (current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected ||
+         current->Ethernet.nHostInterface != changed->Ethernet.nHostInterface ||
+         strcmp(current->Ethernet.szInterfaceName, changed->Ethernet.szInterfaceName))) {
         bReInitEnetEmu = true;
     }
     
@@ -331,7 +359,7 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
  */
 static bool Change_Options(int argc, const char *argv[])
 {
-	bool bOK;
+	bool bOK = false;
 	CNF_PARAMS current;
 
 	Main_PauseEmulation(false);
@@ -339,11 +367,9 @@ static bool Change_Options(int argc, const char *argv[])
 	/* get configuration changes */
 	current = ConfigureParams;
 	ConfigureParams.Screen.bFullScreen = bInFullScreen;
-	bOK = Opt_ParseParameters(argc, argv);
 
 	/* Check if reset is required and ask user if he really wants to continue */
-	if (bOK && Change_DoNeedReset(&current, &ConfigureParams)
-	    && current.Log.nAlertDlgLogLevel > LOG_FATAL) {
+	if (Change_DoNeedReset(&current, &ConfigureParams)) {
 		bOK = DlgAlert_Query("The emulated system must be "
 				     "reset to apply these changes. "
 				     "Apply changes now and reset "

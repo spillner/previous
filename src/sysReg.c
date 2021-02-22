@@ -29,8 +29,8 @@ static Uint8 scr2_1=0x00;
 static Uint8 scr2_2=0x00;
 static Uint8 scr2_3=0x00;
 
-static Uint32 intStat=0x00000000;
-static Uint32 intMask=0x00000000;
+ Uint32 scrIntStat=0x00000000;
+ Uint32 scrIntMask=0x00000000;
 
 
 
@@ -101,8 +101,8 @@ void SCR_Reset(void) {
 		scr2_3=0x00;
 	}
 	
-    intStat=0x00000000;
-    intMask=0x00000000;
+    scrIntStat=0x00000000;
+    scrIntMask=0x00000000;
 
     if (ConfigureParams.System.bTurbo) {
         scr1 = SCR1_TURBO;
@@ -150,24 +150,26 @@ void SCR_Reset(void) {
     scr1 |= ((memory_speed&0xF0)|(cpu_speed&0x03));
 }
 
+#define LOG_SCR_LEVEL LOG_NONE
+
 void SCR1_Read0(void)
 {
-	Log_Printf(LOG_WARN,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
+	Log_Printf(LOG_SCR_LEVEL,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
     IoMem[IoAccessCurrentAddress&IO_SEG_MASK] = (scr1&0xFF000000)>>24;
 }
 void SCR1_Read1(void)
 {
-	Log_Printf(LOG_WARN,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
+	Log_Printf(LOG_SCR_LEVEL,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
     IoMem[IoAccessCurrentAddress&IO_SEG_MASK] = (scr1&0x00FF0000)>>16;
 }
 void SCR1_Read2(void)
 {
-	Log_Printf(LOG_WARN,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
+	Log_Printf(LOG_SCR_LEVEL,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
     IoMem[IoAccessCurrentAddress&IO_SEG_MASK] = (scr1&0x0000FF00)>>8;
 }
 void SCR1_Read3(void)
 {
-	Log_Printf(LOG_WARN,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
+	Log_Printf(LOG_SCR_LEVEL,"SCR1 read at $%08x PC=$%08x\n", IoAccessCurrentAddress,m68k_getpc());
     IoMem[IoAccessCurrentAddress&IO_SEG_MASK] = scr1&0x000000FF;
 }
 
@@ -333,7 +335,7 @@ void SCR2_Write3(void)
     
     if ((old_scr2_3&SCR2_DSP_INT_EN) != (scr2_3&SCR2_DSP_INT_EN)) {
         Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP interrupt at level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
-		if (intStat&(INT_DSP_L3|INT_DSP_L4)) {
+		if (scrIntStat&(INT_DSP_L3|INT_DSP_L4)) {
 			Log_Printf(LOG_DSP_LEVEL,"[SCR2] Switching DSP interrupt to level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
 			set_interrupt(INT_DSP_L3|INT_DSP_L4, RELEASE_INT);
 			set_dsp_interrupt(SET_INT);
@@ -356,11 +358,11 @@ void SCR2_Read3(void)
 /* Interrupt Status Register */
 
 void IntRegStatRead(void) {
-    IoMem_WriteLong(IoAccessCurrentAddress & IO_SEG_MASK, intStat);
+    IoMem_WriteLong(IoAccessCurrentAddress & IO_SEG_MASK, scrIntStat);
 }
 
 void IntRegStatWrite(void) {
-    intStat = IoMem_ReadLong(IoAccessCurrentAddress & IO_SEG_MASK);
+    scrIntStat = IoMem_ReadLong(IoAccessCurrentAddress & IO_SEG_MASK);
 }
 
 void set_dsp_interrupt(Uint8 state) {
@@ -376,15 +378,13 @@ void set_interrupt(Uint32 intr, Uint8 state) {
      * --> see previous-glue.c
      */
     if (state==SET_INT) {
-        intStat |= intr;
+        scrIntStat |= intr;
     } else {
-        intStat &= ~intr;
+        scrIntStat &= ~intr;
     }
 }
 
-int get_interrupt_level(void) {
-    Uint32 interrupt = intStat&intMask;
-    
+int scr_get_interrupt_level(Uint32 interrupt) {
     if (!interrupt) {
         return 0;
     } else if (interrupt&INT_L7_MASK) {
@@ -411,11 +411,11 @@ int get_interrupt_level(void) {
 /* Interrupt Mask Register */
 
 void IntRegMaskRead(void) {
-	IoMem_WriteLong(IoAccessCurrentAddress & IO_SEG_MASK,intMask);
+	IoMem_WriteLong(IoAccessCurrentAddress & IO_SEG_MASK,scrIntMask);
 }
 
 void IntRegMaskWrite(void) {
-	intMask = IoMem_ReadLong(IoAccessCurrentAddress & IO_SEG_MASK);
+	scrIntMask = IoMem_ReadLong(IoAccessCurrentAddress & IO_SEG_MASK);
         Log_Printf(LOG_DEBUG,"Interrupt mask: %08x", intMask);
 }
 

@@ -22,6 +22,7 @@
 #define LOG_SCC_LEVEL		LOG_NONE
 #define LOG_SCC_REG_LEVEL	LOG_NONE
 
+Uint8 scc_buf[1];
 
 /* Registers */
 

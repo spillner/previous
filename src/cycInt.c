@@ -37,7 +37,7 @@ const char CycInt_fileid[] = "Previous cycInt.c : " __DATE__ " " __TIME__;
 #include "kms.h"
 #include "configuration.h"
 #include "main.h"
-#include "nd_sdl.h"
+#include "nd_sdl.hpp"
 
 void (*PendingInterruptFunction)(void);
 Sint64 PendingInterruptCounter;
@@ -77,8 +77,6 @@ static int              ActiveInterrupt=0;
 
 static void CycInt_SetNewInterrupt(void);
 
-extern Uint8 NEXTRom[0x20000];
-
 /*-----------------------------------------------------------------------*/
 /**
  * Reset interrupts, handlers
@@ -105,7 +103,7 @@ void CycInt_Reset(void) {
 /**
  * Find next interrupt to occur, and store to global variables for decrement
  * in instruction decode loop.
- * (SC) Microseconf interrupts are skipped here and handled in the decode loop.
+ * (SC) Microsecond interrupts are skipped here and handled in the decode loop.
  */
 static void CycInt_SetNewInterrupt(void) {
 	Sint64       LowestCycleCount = INT64_MAX;
@@ -222,7 +220,7 @@ void CycInt_AddRelativeInterruptUs(Sint64 us, Sint64 usreal, interrupt_id Handle
 /*-----------------------------------------------------------------------*/
 /**
  * Add interrupt to occur microseconds from now. Convert to cycles.
- * Use UsTimeFast if we are in realtime mode.
+ * Use usreal if we are in realtime mode.
  */
 void CycInt_AddRelativeInterruptUsCycles(Sint64 us, Sint64 usreal, interrupt_id Handler) {
     

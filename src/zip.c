@@ -277,15 +277,16 @@ struct dirent **ZIP_GetFilesDir(const zip_dir *zip, const char *dir, int *entrie
 					else
 					{
 						/* add a filename */
-						files->names[files->nfiles] = (char *)malloc(strlen(temp)+1);
+						int fn_len = strlen(temp);
+						files->names[files->nfiles] = (char *) malloc(fn_len + 1);
 						if (!files->names[files->nfiles])
 						{
 							perror("ZIP_GetFilesDir");
 							ZIP_FreeZipDir(files);
 							return NULL;
 						}
-						strncpy(files->names[files->nfiles], temp, strlen(temp));
-						((char *)files->names[files->nfiles])[strlen(temp)] = '\0';
+						strncpy(files->names[files->nfiles], temp, fn_len);
+						((char *)files->names[files->nfiles])[fn_len] = '\0';
 						files->nfiles++;
 					}
 				}
@@ -376,7 +377,8 @@ static char *ZIP_FirstFile(const char *filename, const char * const ppsExts[])
 			{
 				if (File_DoesFileExtensionMatch(files->names[i], ppsExts[j]))
 				{
-					strncpy(name, files->names[i], ZIP_PATH_MAX);
+					strncpy(name, files->names[i], ZIP_PATH_MAX - 1);
+		                        name[ZIP_PATH_MAX - 1] = '\0';
 					break;
 				}
 			}
@@ -385,7 +387,8 @@ static char *ZIP_FirstFile(const char *filename, const char * const ppsExts[])
 	else
 	{
 		/* There was no extension given -> use the very first name */
-		strncpy(name, files->names[0], ZIP_PATH_MAX);
+		strncpy(name, files->names[0], ZIP_PATH_MAX - 1);
+		name[ZIP_PATH_MAX - 1] = '\0';
 	}
 
 	/* free the files */

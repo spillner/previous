@@ -222,7 +222,7 @@ static Uint32 adb_read_register(Uint32 addr) {
 			
 		default:
 			Log_Printf(LOG_WARN, "[ADB] Illegal read at $%08X",addr);
-			M68000_BusError(addr, 1);
+			M68000_BusError(addr, BUS_ERROR_READ, BUS_ERROR_SIZE_LONG, BUS_ERROR_ACCESS_DATA, 0);
 			return 0;
 	}
 }
@@ -259,7 +259,7 @@ static void adb_write_register(Uint32 addr, Uint32 val) {
 			
 		default:
 			Log_Printf(LOG_WARN, "[ADB] Illegal write at $%08X",addr);
-			M68000_BusError(addr, 0);
+			M68000_BusError(addr, BUS_ERROR_WRITE, BUS_ERROR_SIZE_LONG, BUS_ERROR_ACCESS_DATA, val);
 			break;
 	}
 }
@@ -296,12 +296,12 @@ void adb_lput(Uint32 addr, Uint32 l) {
 
 void adb_wput(Uint32 addr, Uint16 w) {
 	Log_Printf(LOG_WARN, "[ADB] illegal wput at $%08X -> bus error",addr);
-	M68000_BusError(addr, 0);
+	M68000_BusError(addr, BUS_ERROR_WRITE, BUS_ERROR_SIZE_WORD, BUS_ERROR_ACCESS_DATA, w);
 }
 
 void adb_bput(Uint32 addr, Uint8 b) {
 	Log_Printf(LOG_WARN, "[ADB] illegal bput at $%08X -> bus error",addr);
-	M68000_BusError(addr, 0);
+	M68000_BusError(addr, BUS_ERROR_WRITE, BUS_ERROR_SIZE_BYTE, BUS_ERROR_ACCESS_DATA, b);
 }
 
 void ADB_Reset(void) {

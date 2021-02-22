@@ -1,70 +1,48 @@
 /*
   Hatari - compat.h
 
-  This file is distributed under the GNU Public License, version 2 or at
-  your option any later version. Read the file gpl.txt for details.
+  This file is distributed under the GNU General Public License, version 2
+  or at your option any later version. Read the file gpl.txt for details.
 
-  This file contains all the includes and defines specific to windows (such as TCHAR)
-  needed by WinUae CPU core. 
-  The aim is to have minimum changes in WinUae CPU core for next updates
+  This file contains all the includes and defines specific to windows (such as
+  TCHAR) needed by WinUAE CPU core.
+  The aim is to have minimum changes in WinUae CPU core for next updates.
 */
 
 #ifndef HATARI_COMPAT_H
 #define HATARI_COMPAT_H
 
-#include <stdbool.h>
+#include <ctype.h>
+#include "uae/string.h"
 
-#include "sysconfig.h"
+#define strnicmp strncasecmp
 
-/* this defione is here for newcpu.c compatibility.
- * In WinUae, it's defined in debug.h" */
-#ifndef MAX_LINEWIDTH
-#define MAX_LINEWIDTH 100
-#endif
+#define console_out printf
+//#define console_out_f printf
+#define console_out_f(...)	{ if ( console_out_FILE ) fprintf ( console_out_FILE , __VA_ARGS__ ); else printf ( __VA_ARGS__ ); }
+#define gui_message console_out_f
 
-/* Laurent */
-/* here only to allow newcpu.c to compile */
-/* Should be removed when newcpu.c 'll be relooked for hatari only*/
+#define uae_log printf
 
-// Laurent : I don't know what to do with these variables, so, for now, I've put them here !!!
-int vpos;
-int quit_program;  // declared as "int quit_program = 0;" in main.c 
-//WinUae ChangeLog: Improve quitting/resetting behaviour: Move quit_program from GUI
-//WinUae ChangeLog: quit_program is now handled in vsync_handler() and m68k_go().
 
-#ifndef REGPARAM
-#define REGPARAM
-#endif
+static inline void to_upper (TCHAR *s, int len) {
+	int i;
+	for (i = 0; i < len; i++) {
+		s[i] = toupper(s[i]);
+	}
+}
 
-#ifndef REGPARAM2
-#define REGPARAM2
-#endif
 
-#ifndef REGPARAM3
-#define REGPARAM3
-#endif
+static inline void my_trim (TCHAR *s)
+{
+	int len;
+	while (_tcslen (s) > 0 && _tcscspn (s, _T("\t \r\n")) == 0)
+		memmove (s, s + 1, (_tcslen (s + 1) + 1) * sizeof (TCHAR));
+	len = _tcslen (s);
+	while (len > 0 && _tcscspn (s + len - 1, _T("\t \r\n")) == 0)
+		s[--len] = '\0';
+}
 
-#ifndef TCHAR
-#define TCHAR char
-#endif
-
-#ifndef STATIC_INLINE
-#define STATIC_INLINE static inline
-#endif
-
-#define _vsnprintf vsnprintf
-#define _tcsncmp strncmp
-#define _istspace isspace
-#define _tcscmp strcmp
-#define _tcslen strlen
-#define _tcsstr strstr
-#define _tcscpy strcpy
-#define _tcsncpy strncpy
-#define _tcscat strcat
-#define _stprintf sprintf
-
-#define _vsntprintf printf
-
-#define f_out fprintf
 
 #endif
+

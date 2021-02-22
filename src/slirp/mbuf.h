@@ -134,7 +134,7 @@ void m_init(void);
 void msize_init(void);
 struct mbuf * m_get(void);
 void m_free(struct mbuf *);
-void m_cat(register struct mbuf *, register struct mbuf *);
+void m_cat(struct mbuf *, struct mbuf *);
 void m_inc(struct mbuf *, u_int);
 void m_adj(struct mbuf *, int);
 int m_copy(struct mbuf *, struct mbuf *, u_int, u_int);

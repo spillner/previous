@@ -14,12 +14,7 @@
 /* Functions prototypes						*/
 /*--------------------------------------------------------------*/
 
-void	Video_MemorySnapShot_Capture(bool bSave);
-
 void Video_Reset(void);
-void	Video_Reset_Glue(void);
-
-void	Video_StartInterrupts ( int PendingCyclesOver );
-void	Video_InterruptHandler_VBL(void);
+void Video_InterruptHandler_VBL(void);
 
 #endif  /* HATARI_VIDEO_H */

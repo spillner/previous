@@ -5,6 +5,9 @@
  * terms and conditions of the copyright.
  */
 
+#include <netinet/in.h>
+#include "sbuf.h"
+
 /* MINE */
 
 #ifndef _SLIRP_SOCKET_H_
@@ -81,6 +84,9 @@ struct iovec {
 };
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void so_init(void);
 struct socket * solookup(struct socket *, struct in_addr, u_int, struct in_addr, u_int);
 struct socket * socreate(void);
@@ -100,5 +106,8 @@ void sofcantrcvmore(struct  socket *);
 void sofcantsendmore(struct socket *);
 void soisfdisconnected(struct socket *);
 void sofwdrain(struct socket *);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SOCKET_H_ */

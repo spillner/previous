@@ -448,7 +448,6 @@ void kms_keydown(Uint8 modkeys, Uint8 keycode) {
     
     if ((keycode==0x25)&&((modkeys&0x28)==0x28)) { /* asterisk and left alt and left command key */
         Log_Printf(LOG_WARN, "Keyboard initiated CPU reset!");
-        host_darkmatter(false);
         M68000_Reset(false);
         return;
     }

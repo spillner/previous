@@ -14,8 +14,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 
 #include "main.h"
 #include "configuration.h"
-#include "control.h"
-#include "options.h"
 #include "dialog.h"
 #include "ioMem.h"
 #include "keymap.h"
@@ -28,7 +26,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "shortcut.h"
 #include "snd.h"
 #include "statusbar.h"
-#include "nextMemory.h"
 #include "str.h"
 #include "video.h"
 #include "audio.h"
@@ -36,9 +33,10 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "file.h"
 #include "dsp.h"
 #include "host.h"
-#include "dimension.h"
+#include "dimension.hpp"
 
 #include "hatari-glue.h"
+#include "NextBus.hpp"
 
 #if HAVE_GETTIMEOFDAY
 #include <sys/time.h>
@@ -66,7 +64,7 @@ static Uint64 lastCycles;
 static double speedFactor;
 static char   speedMsg[32];
 
-void Main_Speed(double realTime, double hostTime) {
+static void Main_Speed(double realTime, double hostTime) {
     double dRT = realTime - lastRT;
     speedFactor = nCyclesMainCounter - lastCycles;
     speedFactor /= ConfigureParams.System.nCpuFreq;
@@ -81,6 +79,8 @@ void Main_SpeedReset(void) {
     host_time(&realTime, &hostTime);
     lastRT     = realTime;
     lastCycles = nCyclesMainCounter;
+    
+    Log_Printf(LOG_WARN, "Realtime mode %s.\n", ConfigureParams.System.bRealtime ? "enabled" : "disabled");
 }
 
 const char* Main_SpeedMsg() {
@@ -120,9 +120,7 @@ bool Main_PauseEmulation(bool visualize) {
     host_pause_time(!(bEmulationActive));
     Screen_Pause(true);
     Sound_Pause(true);
-    if (ConfigureParams.Dimension.bEnabled) {
-        dimension_pause(true);
-    }
+    NextBus_Pause(true);
     
 	if (visualize) {
 		Statusbar_AddMessage("Emulation paused", 100);
@@ -152,9 +150,7 @@ bool Main_UnPauseEmulation(void) {
     host_pause_time(!(bEmulationActive));
     Screen_Pause(false);
     Sound_Pause(false);
-    if (ConfigureParams.Dimension.bEnabled) {
-        dimension_pause(false);
-    }
+    NextBus_Pause(false);
 
 	if (bGrabMouse) {
 		/* Grab mouse pointer again */
@@ -257,7 +253,6 @@ void Main_EventHandler(void) {
     bool bContinueProcessing;
     SDL_Event event;
     int events;
-    int remotepause;
     
     if(++statusBarUpdate > 400) {
         double vt;
@@ -270,6 +265,7 @@ void Main_EventHandler(void) {
             if(msg[0]) fprintf(stderr, " %s:%s", reports[i].label, msg);
         }
         fprintf(stderr, "\n");
+        fflush(stderr);
 #else
         Main_Speed(rt, vt);
 #endif
@@ -292,10 +288,7 @@ void Main_EventHandler(void) {
                 break;
         }
         
-        /* check remote process control */
-        remotepause = Control_CheckUpdates();
-        
-        if ( bEmulationActive || remotepause ) {
+        if (bEmulationActive) {
             double time_offset = host_real_time_offset() * 1000;
             if(time_offset > 10)
                 events = SDL_WaitEventTimeout(&event, time_offset);
@@ -420,7 +413,7 @@ static void Main_Init(void) {
 
 	/* Init SDL's video subsystem. Note: Audio and joystick subsystems
 	   will be initialized later (failures there are not fatal). */
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | Opt_GetNoParachuteFlag()) < 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
 	{
 		fprintf(stderr, "Could not initialize the SDL library:\n %s\n", SDL_GetError() );
 		exit(-1);

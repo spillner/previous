@@ -15,6 +15,7 @@
 #undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0501
 # include <inttypes.h>
+# include <WinError.h>
 
 typedef uint8_t u_int8_t;
 typedef uint16_t u_int16_t;
@@ -161,6 +162,7 @@ int inet_aton(const char *cp, struct in_addr *ia);
 #include <fcntl.h>
 #ifdef _WIN32
 #include <io.h>
+const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
 #endif
 #ifndef NO_UNIX_SOCKETS
 #include <sys/un.h>

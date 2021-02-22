@@ -19,6 +19,8 @@
 
 #define IO_SEG_MASK	0x1FFFF
 
+ESPDMASTATUS esp_dma;
+
 typedef enum {
     DISCONNECTED,
     INITIATOR,
@@ -44,21 +46,21 @@ void esp_command_clear(void);
 void esp_command_write(Uint8 cmd);
 
 /* ESP Registers */
-Uint8 writetranscountl;
-Uint8 writetranscounth;
-Uint8 fifo[ESP_FIFO_SIZE];
-Uint8 command[2];
-Uint8 status;
-Uint8 selectbusid;
-Uint8 intstatus;
-Uint8 selecttimeout;
-Uint8 seqstep;
-Uint8 syncperiod;
-Uint8 fifoflags;
-Uint8 syncoffset;
-Uint8 configuration;
-Uint8 clockconv;
-Uint8 esptest;
+static Uint8 writetranscountl;
+static Uint8 writetranscounth;
+static Uint8 fifo[ESP_FIFO_SIZE];
+static Uint8 command[2];
+static Uint8 status;
+static Uint8 selectbusid;
+static Uint8 intstatus;
+static Uint8 selecttimeout;
+static Uint8 seqstep;
+static Uint8 syncperiod;
+static Uint8 fifoflags;
+static Uint8 syncoffset;
+static Uint8 configuration;
+static Uint8 clockconv;
+static Uint8 esptest;
 
 Uint32 esp_counter;
 

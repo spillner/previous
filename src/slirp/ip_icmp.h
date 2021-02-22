@@ -162,7 +162,7 @@ struct icmp {
 	(type) == ICMP_MASKREQ || (type) == ICMP_MASKREPLY)
 
 void icmp_input(struct mbuf *, int);
-void icmp_error(struct mbuf *, u_char, u_char, int, char *);
+void icmp_error(struct mbuf *, u_char, u_char, int, const char *);
 void icmp_reflect(struct mbuf *);
 
 #endif

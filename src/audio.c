@@ -58,8 +58,9 @@ static void Audio_Input_CallBack(void *userdata, Uint8 *stream, int len) {
     Log_Printf(LOG_WARN, "Audio_Input_CallBack %d", len);
     if(len == 0) return;
     Audio_Input_Lock();
-    while(len--)
-        recBuffer[recBufferWr++&REC_BUFFER_MASK] = *stream++;
+    while(len--) {
+        recBuffer[recBufferWr++&REC_BUFFER_MASK] = *stream++;		
+	}
 	recBufferWr &= REC_BUFFER_MASK;
 	recBufferWr &= ~1; /* Just to be sure */
     Audio_Input_Unlock();
@@ -75,14 +76,14 @@ void Audio_Input_Lock() {
  */
 #define AUDIO_RECBUF_INIT	0 /* 16000 byte = 1 second */
 
-void Audio_Input_InitBuf() {
+static void Audio_Input_InitBuf(void) {
 	recBufferRd = 0;
 	for (recBufferWr = 0; recBufferWr < AUDIO_RECBUF_INIT; recBufferWr++) {
 		recBuffer[recBufferWr] = 0;
 	}
 }
 
-int Audio_Input_Read() {
+int Audio_Input_Read(void) {
 	Sint16 sample = 0;
 	
     if (bSoundInputWorking) {

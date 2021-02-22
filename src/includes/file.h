@@ -5,8 +5,14 @@
   your option any later version. Read the file gpl.txt for details.
 */
 
+#pragma once
+
 #ifndef HATARI_FILE_H
 #define HATARI_FILE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 void File_CleanFileName(char *pszFileName);
 void File_AddSlashToEndFileName(char *pszFileName);
@@ -33,5 +39,9 @@ void File_MakeAbsoluteName(char *pszFileName);
 void File_MakeValidPathName(char *pPathName);
 void File_PathShorten(char *path, int dirs);
 void File_HandleDotDirs(char *path);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif /* HATARI_FILE_H */

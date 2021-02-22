@@ -9,11 +9,13 @@ void LP_CSR3_Write(void);
 void LP_Data_Read(void);
 void LP_Data_Write(void);
 
-struct {
+typedef struct {
     Uint8 data[64*1024];
     int size;
     int limit;
-} lp_buffer;
+} PrinterBuffer;
+
+extern PrinterBuffer lp_buffer;
 
 void Printer_Reset(void);
 void Printer_IO_Handler(void);

@@ -1,3 +1,13 @@
+#pragma once
+
+#ifndef __SYSREG_H__
+#define __SYSREG_H__
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* NeXT system registers emulation */
 
 /* Interrupts */
@@ -47,7 +57,23 @@
 #define RELEASE_INT     0
 
 void set_interrupt(Uint32 intr, Uint8 state);
-int get_interrupt_level(void);
+int scr_get_interrupt_level(Uint32 interrupt);
+
+extern Uint32 scrIntStat;
+extern Uint32 scrIntMask;
+
+/**
+ * Return interrupt number (1 - 7), 0 means no interrupt.
+ * Note that the interrupt stays pending if it can't be executed yet
+ * due to the interrupt level field in the SR.
+ */
+static inline int intlev(void) {
+    /* Poll interrupt level from interrupt status and mask registers
+     * --> see sysReg.c
+     */
+    Uint32 interrupt = scrIntStat&scrIntMask;
+    return interrupt ? scr_get_interrupt_level(interrupt) : 0;
+}
 
 void set_dsp_interrupt(Uint8 state);
 
@@ -88,3 +114,9 @@ void System_Timer_Write(void);
 
 void ColorVideo_CMD_Write(void);
 void color_video_interrupt(void);
+    
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __SYSREG_H__ */

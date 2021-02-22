@@ -235,4 +235,4 @@ void SCC_Reset(Uint8 mode);
 
 
 /* SCC DMA buffer */
-Uint8 scc_buf[1];
+extern Uint8 scc_buf[1];

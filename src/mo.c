@@ -37,6 +37,7 @@
 
 #define IO_SEG_MASK	0x1FFFF
 
+OpticalDiskBuffer ecc_buffer[2];
 
 /* Registers */
 
@@ -58,7 +59,7 @@ struct {
     Uint8 mark;
     Uint8 flag[7];
 } mo;
-int sector_counter;
+static int sector_counter;
 
 struct {
     Uint16 status;
@@ -86,7 +87,7 @@ struct {
     bool connected;
 } modrv[MO_MAX_DRIVES];
 
-int dnum;
+static int dnum;
 
 
 #define NO_HEAD     0
@@ -921,7 +922,7 @@ void ecc_sequence_done(void) {
         osp_interrupt(MOINT_ECC_DONE);
     }
 }
-Uint32 old_size;
+static Uint32 old_size;
 void ECC_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
     
@@ -1318,7 +1319,7 @@ void mo_seek(Uint16 command) {
     modrv[dnum].seeking = true;
     modrv[dnum].head_pos = (modrv[dnum].ho_head_pos&0xF000) | (command&0x0FFF);
 #if SEEK_TIMING
-    if (seek_time>modrv[dnum].head_pos) {
+    if ((Uint32)seek_time>modrv[dnum].head_pos) {
         seek_time=seek_time-modrv[dnum].head_pos;
     } else {
         seek_time=modrv[dnum].head_pos-seek_time;

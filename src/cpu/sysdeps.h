@@ -1,6 +1,3 @@
-#ifndef UAE_SYSDEPS_H
-#define UAE_SYSDEPS_H
-
 /*
   * UAE - The Un*x Amiga Emulator
   *
@@ -14,20 +11,93 @@
   *
   * Copyright 1996, 1997 Bernd Schmidt
   */
+#ifndef UAE_SYSDEPS_H
+#define UAE_SYSDEPS_H
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#include "sysconfig.h"
+
+#ifdef WINUAE_FOR_HATARI
+#include "compat.h"
+#ifdef __GNUC__
+#define HAVE_VAR_ATTRIBUTE_UNUSED 1
+#endif
+#if defined(_MSC_VER)
+#include "../includes/vs-fix.h"
+#endif
+#endif
+
+#ifndef UAE
+#define UAE
+#endif
+
+#ifdef __cplusplus
 //#include <string>
 //using namespace std;
-
+#else
+#include <string.h>
+#include <ctype.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
 #include <limits.h>
-//#include <tchar.h>
-#include "compat.h"
+
+#ifndef UAE
+#define UAE
+#endif
+
+#if defined(__x86_64__) || defined(_M_AMD64)
+#define CPU_x86_64 1
+#define CPU_64_BIT 1
+#define X86_64_ASSEMBLY 1
+#define SAHF_SETO_PROFITABLE
+#elif defined(__i386__) || defined(_M_IX86)
+#define CPU_i386 1
+#define X86_ASSEMBLY 1
+#define SAHF_SETO_PROFITABLE
+#elif defined(__arm__) || defined(_M_ARM) || defined(__aarch64__)
+#define CPU_arm 1
+#elif defined(__powerpc__) || defined(_M_PPC) || defined(__ppc__) || defined(__ppc64__)
+#define CPU_powerpc 1
+#elif defined(__mips__) || defined(mips) || defined(__mips64)
+#define CPU_mips 1
+#elif defined(JIT)
+#error unrecognized CPU type
+#endif
+
+#ifdef _WIN32
+/* Parameters are passed in ECX, EDX for both x86 and x86-64 (RCX, RDX).
+ * For x86-64, __fastcall is the default, so it isn't really required. */
+#define JITCALL __fastcall
+#elif defined(CPU_x86_64)
+/* Parameters are passed in RDI, RSI by default (System V AMD64 ABI). */
+#define JITCALL
+#elif defined(HAVE_FUNC_ATTRIBUTE_REGPARM)
+/* Parameters are passed in EAX, EDX on x86 with regparm(2). */
+#define JITCALL __attribute__((regparm(2)))
+/* This was originally regparm(3), but as far as I can see only two register
+ * params are supported by the JIT code. It probably just worked anyway
+ * if all functions used max two arguments. */
+#elif !defined(JIT)
+#define JITCALL
+#endif
+#define REGPARAM
+#define REGPARAM2 JITCALL
+#define REGPARAM3 JITCALL
+
+#ifdef WINUAE_FOR_HATARI
+    #include "uae/types.h"
+#elif HAVE_TCHAR_H
+    #include <tchar.h>
+#endif
 
 #ifndef __STDC__
 #ifndef _MSC_VER
-#error "Your compiler is not ANSI. Get a real one."
+    #error "Your compiler does not appear to support ANSI C.  Porting effort is required in src/cpu/sysdeps.h."
 #endif
 #endif
 
@@ -50,9 +120,6 @@
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
 #endif
 
 #ifdef HAVE_UTIME_H
@@ -96,10 +163,6 @@
 #include <errno.h>
 #include <assert.h>
 
-#if EEXIST == ENOTEMPTY
-#define BROKEN_OS_PROBABLY_AIX
-#endif
-
 #ifdef __NeXT__
 #define S_IRUSR S_IREAD
 #define S_IWUSR S_IWRITE
@@ -112,71 +175,23 @@ struct utimbuf
 };
 #endif
 
-#if defined(__GNUC__) && defined(AMIGA)
-/* gcc on the amiga need that __attribute((regparm)) must */
-/* be defined in function prototypes as well as in        */
-/* function definitions !                                 */
-#define REGPARAM2 REGPARAM
-#else /* not(GCC & AMIGA) */
-#define REGPARAM2
+#ifdef WINUAE_FOR_HATARI  /* Types are provided by uae/types.h already */
+
+#if SIZEOF_LONG_LONG == 8
+#define VAL64(a) (a ## LL)
+#define UVAL64(a) (a ## uLL)
+#elif SIZEOF___INT64 == 8
+#define VAL64(a) (a)
+#define UVAL64(a) (a)
+#elif SIZEOF_LONG == 8
+#define VAL64(a) (a ## L)
+#define UVAL64(a) (a ## UL)
 #endif
 
-/* sam: some definitions so that SAS/C can compile UAE */
-#if defined(__SASC) && defined(AMIGA)
-#define REGPARAM2
-#define REGPARAM
-#define S_IRUSR S_IREAD
-#define S_IWUSR S_IWRITE
-#define S_IXUSR S_IEXECUTE
-#define S_ISDIR(val) (S_IFDIR & val)
-#define mkdir(x,y) mkdir(x)
-#define truncate(x,y) 0
-#define creat(x,y) open("T:creat",O_CREAT|O_TEMP|O_RDWR) /* sam: for zfile.c */
-#define strcasecmp stricmp
-#define utime(file,time) 0
-struct utimbuf
-{
-    time_t actime;
-    time_t modtime;
-};
-#endif
+#define uae_s64 uae_s64
+#define uae_u64 uae_u64
 
-#if defined(WARPUP)
-#include "devices/timer.h"
-#include "osdep/posixemu.h"
-#define REGPARAM
-#define REGPARAM2
-#define RETSIGTYPE
-#define USE_ZFILE
-#define strcasecmp stricmp
-#define memcpy q_memcpy
-#define memset q_memset
-#define strdup my_strdup
-#define random rand
-#define creat(x,y) open("T:creat",O_CREAT|O_RDWR|O_TRUNC,777)
-void* q_memset(void*,int,size_t);
-void* q_memcpy(void*,const void*,size_t);
-#endif
-
-#ifdef __DOS__
-#include <pc.h>
-#include <io.h>
-#endif
-
-/* Acorn specific stuff */
-#ifdef ACORN
-
-#define S_IRUSR S_IREAD
-#define S_IWUSR S_IWRITE
-#define S_IXUSR S_IEXEC
-
-#define strcasecmp stricmp
-
-#endif
-
-#ifndef L_tmpnam
-#define L_tmpnam 128 /* ought to be safe */
-#endif
+#else  /* WINUAE_FOR_HATARI */
 
 /* If char has more then 8 bits, good night. */
 typedef unsigned char uae_u8;
@@ -186,23 +201,23 @@ typedef char uae_char;
 typedef struct { uae_u8 RGB[3]; } RGB;
 
 #if SIZEOF_SHORT == 2
-typedef unsigned short uae_u16;
-typedef short uae_s16;
+    typedef unsigned short uae_u16;
+    typedef short uae_s16;
 #elif SIZEOF_INT == 2
-typedef unsigned int uae_u16;
-typedef int uae_s16;
+    typedef unsigned int uae_u16;
+    typedef int uae_s16;
 #else
-#error No 2 byte type, you lose.
+    #error "Cannot find a 2-byte type, port src/cpu/sysconfig.h to your architecture"
 #endif
 
 #if SIZEOF_INT == 4
-typedef unsigned int uae_u32;
-typedef int uae_s32;
+    typedef unsigned int uae_u32;
+    typedef int uae_s32;
 #elif SIZEOF_LONG == 4
-typedef unsigned long uae_u32;
-typedef long uae_s32;
+    typedef unsigned long uae_u32;
+    typedef long uae_s32;
 #else
-#error No 4 byte type, you lose.
+    #error "Cannot find a 4-byte type, port src/cpu/sysconfig.h to your architecture"
 #endif
 
 typedef uae_u32 uaecptr;
@@ -210,60 +225,57 @@ typedef uae_u32 uaecptr;
 #undef uae_s64
 #undef uae_u64
 
-#if SIZEOF_LONG_LONG == 8
-#define uae_s64 long long
-#define uae_u64 unsigned long long
-#define VAL64(a) (a ## LL)
-#define UVAL64(a) (a ## uLL)
+#if SIZEOF_LONG == 8
+    #define uae_s64 long;
+    #define uae_u64 unsigned long;
+    #define VAL64(a) (a ## L)
+    #define UVAL64(a) (a ## UL)
+#elif SIZEOF_LONG_LONG == 8
+    #define uae_s64 long long
+    #define uae_u64 unsigned long long
+    #define VAL64(a) (a ## LL)
+    #define UVAL64(a) (a ## ULL)
 #elif SIZEOF___INT64 == 8
-#define uae_s64 __int64
-#define uae_u64 unsigned __int64
-#define VAL64(a) (a)
-#define UVAL64(a) (a)
-#elif SIZEOF_LONG == 8
-#define uae_s64 long;
-#define uae_u64 unsigned long;
-#define VAL64(a) (a ## l)
-#define UVAL64(a) (a ## ul)
+    #define uae_s64 __int64
+    #define uae_u64 unsigned __int64
+    #define VAL64(a) (a)
+    #define UVAL64(a) (a)
 #endif
+
+#endif /* WINUAE_FOR_HATARI */
+
+uae_atomic atomic_and(volatile uae_atomic *p, uae_u32 v);
+uae_atomic atomic_or(volatile uae_atomic *p, uae_u32 v);
+uae_atomic atomic_inc(volatile uae_atomic *p);
+uae_atomic atomic_dec(volatile uae_atomic *p);
+uae_u32 atomic_bit_test_and_reset(volatile uae_atomic *p, uae_u32 v);
 
 #ifdef HAVE_STRDUP
-#define my_strdup _tcsdup
+    #define my_strdup _tcsdup
 #else
-TCHAR *my_strdup (const TCHAR*s);
+    extern TCHAR *my_strdup (const TCHAR*s);
 #endif
-TCHAR *my_strdup_ansi (const char*);
-TCHAR *au (const char*);
-char *ua (const TCHAR*);
-TCHAR *aucp (const char *s, unsigned int cp);
-char *uacp (const TCHAR *s, unsigned int cp);
-TCHAR *au_fs (const char*);
-char *ua_fs (const TCHAR*, int);
-char *ua_copy (char *dst, int maxlen, const TCHAR *src);
-TCHAR *au_copy (TCHAR *dst, int maxlen, const char *src);
-char *ua_fs_copy (char *dst, int maxlen, const TCHAR *src, int defchar);
-TCHAR *au_fs_copy (TCHAR *dst, int maxlen, const char *src);
-char *uutf8 (const TCHAR *s);
-TCHAR *utf8u (const char *s);
-void unicode_init (void);
-void to_lower (TCHAR *s, int len);
-void to_upper (TCHAR *s, int len);
-/* We can only rely on GNU C getting enums right. Mickeysoft VSC++ is known
- * to have problems, and it's likely that other compilers choke too. */
-#ifdef __GNUC__
+extern TCHAR *my_strdup_ansi (const char*);
+extern void my_trim (TCHAR*);
+extern TCHAR *my_strdup_trim (const TCHAR*);
+extern TCHAR *au (const char*);
+extern char *ua (const TCHAR*);
+extern TCHAR *aucp (const char *s, unsigned int cp);
+extern char *uacp (const TCHAR *s, unsigned int cp);
+extern TCHAR *au_fs (const char*);
+extern char *ua_fs (const TCHAR*, int);
+extern char *ua_copy (char *dst, int maxlen, const TCHAR *src);
+extern TCHAR *au_copy (TCHAR *dst, int maxlen, const char *src);
+extern char *ua_fs_copy (char *dst, int maxlen, const TCHAR *src, int defchar);
+extern TCHAR *au_fs_copy (TCHAR *dst, int maxlen, const char *src);
+extern char *uutf8 (const TCHAR *s);
+extern TCHAR *utf8u (const char *s);
+extern void unicode_init (void);
+extern void to_lower (TCHAR *s, int len);
+extern void to_upper (TCHAR *s, int len);
+
 #define ENUMDECL typedef enum
 #define ENUMNAME(name) name
-
-/* While we're here, make abort more useful.  */
-/*#define abort() \
-  do { \
-    write_log ("Internal error; file %s, line %d\n", __FILE__, __LINE__); \
-    (abort) (); \
-} while (0)
-*/#else
-#define ENUMDECL enum
-#define ENUMNAME(name) ; typedef int name
-#endif
 
 /*
  * Porters to weird systems, look! This is the preferred way to get
@@ -282,8 +294,11 @@ void to_upper (TCHAR *s, int len);
 #define DONT_HAVE_POSIX
 #endif
 
-#if defined _WIN32
+#if !defined(FSUAE) && defined _WIN32
 
+//#ifdef FSUAE
+//#error _WIN32 should not be defined here
+//#endif
 #if defined __WATCOMC__
 
 #define O_NDELAY 0
@@ -294,14 +309,25 @@ void to_upper (TCHAR *s, int len);
 
 #elif defined __MINGW32__
 
+#include <winsock.h>
+
 #define O_NDELAY 0
+
+#define FILEFLAG_DIR     0x1
+#define FILEFLAG_ARCHIVE 0x2
+#define FILEFLAG_WRITE   0x4
+#define FILEFLAG_READ    0x8
+#define FILEFLAG_EXECUTE 0x10
+#define FILEFLAG_SCRIPT  0x20
+#define FILEFLAG_PURE    0x40
+
 #define mkdir(a,b) mkdir(a)
 
 #elif defined _MSC_VER
 
 #ifdef HAVE_GETTIMEOFDAY
 #include <winsock.h> // for 'struct timeval' definition
-void gettimeofday( struct timeval *tv, void *blah );
+extern void gettimeofday( struct timeval *tv, void *blah );
 #endif
 
 #define O_NDELAY 0
@@ -314,13 +340,6 @@ void gettimeofday( struct timeval *tv, void *blah );
 #define FILEFLAG_SCRIPT  0x20
 #define FILEFLAG_PURE    0x40
 
-#ifdef REGPARAM2
-#undef REGPARAM2
-#endif
-#define REGPARAM2 __fastcall
-#define REGPARAM3 __fastcall
-#define REGPARAM
-
 #include <io.h>
 #define O_BINARY _O_BINARY
 #define O_WRONLY _O_WRONLY
@@ -328,6 +347,7 @@ void gettimeofday( struct timeval *tv, void *blah );
 #define O_RDWR   _O_RDWR
 #define O_CREAT  _O_CREAT
 #define O_TRUNC  _O_TRUNC
+#ifndef WINUAE_FOR_HATARI
 #define strcasecmp _tcsicmp 
 #define strncasecmp _tcsncicmp 
 #define W_OK 0x2
@@ -338,6 +358,7 @@ struct direct
 {
     TCHAR d_name[1];
 };
+#endif /* WINUAE_FOR_HATARI */
 #include <sys/utime.h>
 #define utimbuf __utimbuf64
 #define USE_ZFILE
@@ -352,27 +373,6 @@ struct direct
 #define S_IRUSR FILEFLAG_READ
 #define S_IXUSR FILEFLAG_EXECUTE
 
-/* These are prototypes for functions from the Win32 posixemu file */
-void get_time (time_t t, long* days, long* mins, long* ticks);
-time_t put_time (long days, long mins, long ticks);
-
-/* #define DONT_HAVE_POSIX - don't need all of Mathias' posixemu_functions, just a subset (below) */
-#define chmod(a,b) posixemu_chmod ((a), (b))
-int posixemu_chmod (const TCHAR *, int);
-#define stat(a,b) posixemu_stat ((a), (b))
-int posixemu_stat (const TCHAR *, struct _stat64 *);
-#define mkdir(x,y) mkdir(x)
-#define truncate posixemu_truncate
-int posixemu_truncate (const TCHAR *, long int);
-#define utime posixemu_utime
-int posixemu_utime (const TCHAR *, struct utimbuf *);
-#define opendir posixemu_opendir
-DIR * posixemu_opendir (const TCHAR *);
-#define readdir posixemu_readdir
-struct dirent* posixemu_readdir (DIR *);
-#define closedir posixemu_closedir
-void posixemu_closedir (DIR *);
-
 #endif
 
 #endif /* _WIN32 */
@@ -380,63 +380,63 @@ void posixemu_closedir (DIR *);
 #ifdef DONT_HAVE_POSIX
 
 #define access posixemu_access
-int posixemu_access (const TCHAR *, int);
+extern int posixemu_access (const TCHAR *, int);
 #define open posixemu_open
-int posixemu_open (const TCHAR *, int, int);
+extern int posixemu_open (const TCHAR *, int, int);
 #define close posixemu_close
-void posixemu_close (int);
+extern void posixemu_close (int);
 #define read posixemu_read
-int posixemu_read (int, TCHAR *, int);
+extern int posixemu_read (int, TCHAR *, int);
 #define write posixemu_write
-int posixemu_write (int, const TCHAR *, int);
+extern int posixemu_write (int, const TCHAR *, int);
 #undef lseek
 #define lseek posixemu_seek
-int posixemu_seek (int, int, int);
+extern int posixemu_seek (int, int, int);
 #define stat(a,b) posixemu_stat ((a), (b))
-int posixemu_stat (const TCHAR *, STAT *);
+extern int posixemu_stat (const TCHAR *, STAT *);
 #define mkdir posixemu_mkdir
-int mkdir (const TCHAR *, int);
+extern int mkdir (const TCHAR *, int);
 #define rmdir posixemu_rmdir
-int posixemu_rmdir (const TCHAR *);
+extern int posixemu_rmdir (const TCHAR *);
 #define unlink posixemu_unlink
-int posixemu_unlink (const TCHAR *);
+extern int posixemu_unlink (const TCHAR *);
 #define truncate posixemu_truncate
-int posixemu_truncate (const TCHAR *, long int);
+extern int posixemu_truncate (const TCHAR *, long int);
 #define rename posixemu_rename
-int posixemu_rename (const TCHAR *, const TCHAR *);
+extern int posixemu_rename (const TCHAR *, const TCHAR *);
 #define chmod posixemu_chmod
-int posixemu_chmod (const TCHAR *, int);
+extern int posixemu_chmod (const TCHAR *, int);
 #define tmpnam posixemu_tmpnam
-void posixemu_tmpnam (TCHAR *);
+extern void posixemu_tmpnam (TCHAR *);
 #define utime posixemu_utime
-int posixemu_utime (const TCHAR *, struct utimbuf *);
+extern int posixemu_utime (const TCHAR *, struct utimbuf *);
 #define opendir posixemu_opendir
-DIR * posixemu_opendir (const TCHAR *);
+extern DIR * posixemu_opendir (const TCHAR *);
 #define readdir posixemu_readdir
-struct dirent* readdir (DIR *);
+extern struct dirent* readdir (DIR *);
 #define closedir posixemu_closedir
-void closedir (DIR *);
+extern void closedir (DIR *);
 
 /* This isn't the best place for this, but it fits reasonably well. The logic
  * is that you probably don't have POSIX errnos if you don't have the above
  * functions. */
-long dos_errno (void);
+extern long dos_errno (void);
 
 #endif
 
 #ifdef DONT_HAVE_STDIO
 
-FILE *stdioemu_fopen (const TCHAR *, const TCHAR *);
+extern FILE *stdioemu_fopen (const TCHAR *, const TCHAR *);
 #define fopen(a,b) stdioemu_fopen(a, b)
-int stdioemu_fseek (FILE *, int, int);
+extern int stdioemu_fseek (FILE *, int, int);
 #define fseek(a,b,c) stdioemu_fseek(a, b, c)
-int stdioemu_fread (TCHAR *, int, int, FILE *);
+extern int stdioemu_fread (TCHAR *, int, int, FILE *);
 #define fread(a,b,c,d) stdioemu_fread(a, b, c, d)
-int stdioemu_fwrite (const TCHAR *, int, int, FILE *);
+extern int stdioemu_fwrite (const TCHAR *, int, int, FILE *);
 #define fwrite(a,b,c,d) stdioemu_fwrite(a, b, c, d)
-int stdioemu_ftell (FILE *);
+extern int stdioemu_ftell (FILE *);
 #define ftell(a) stdioemu_ftell(a)
-int stdioemu_fclose (FILE *);
+extern int stdioemu_fclose (FILE *);
 #define fclose(a) stdioemu_fclose(a)
 
 #endif
@@ -444,14 +444,15 @@ int stdioemu_fclose (FILE *);
 #ifdef DONT_HAVE_MALLOC
 
 #define malloc(a) mallocemu_malloc(a)
-void *mallocemu_malloc (int size);
+extern void *mallocemu_malloc (int size);
 #define free(a) mallocemu_free(a)
-void mallocemu_free (void *ptr);
+extern void mallocemu_free (void *ptr);
 
 #endif
 
 #ifdef X86_ASSEMBLY
-#define ASM_SYM_FOR_FUNC(a) __asm__(a)
+//#define ASM_SYM_FOR_FUNC(a) __asm__(a)
+#define ASM_SYM_FOR_FUNC(a)
 #else
 #define ASM_SYM_FOR_FUNC(a)
 #endif
@@ -463,34 +464,51 @@ void mallocemu_free (void *ptr);
 #define write_log write_log_standard
 #endif
 
-#if __GNUC__ - 1 > 1 || __GNUC_MINOR__ - 1 > 6
-void write_log (const TCHAR *, ...) __attribute__ ((format (printf, 1, 2)));
+#ifdef WINUAE_FOR_HATARI
+//#define write_log(...) Log_Printf(LOG_DEBUG, __VA_ARGS__)
+#define write_log printf
+#elif __GNUC__ - 1 > 1 || __GNUC_MINOR__ - 1 > 6
+extern void write_log(const TCHAR *, ...);
+extern void write_logx(const TCHAR *, ...);
+extern void write_log(const char *, ...) __attribute__ ((format (printf, 1, 2)));
 #else
-void write_log (const TCHAR *, ...);
+extern void write_log(const TCHAR *, ...);
+extern void write_logx(const TCHAR *, ...);
+extern void write_log(const char *, ...);
 #endif
-void write_dlog (const TCHAR *, ...);
+extern void write_dlog (const TCHAR *, ...);
+extern int read_log(void);
 
-void flush_log (void);
-void close_console (void);
-void reopen_console (void);
-void console_out (const TCHAR *);
-void console_flush (void);
-int console_get (TCHAR *, int);
-TCHAR console_getch (void);
-void gui_message (const TCHAR *,...);
-int gui_message_multibutton (int flags, const TCHAR *format,...);
+extern void flush_log (void);
+extern TCHAR *setconsolemode (TCHAR *buffer, int maxlen);
+extern void close_console (void);
+extern void reopen_console (void);
+extern void activate_console (void);
+//extern void console_out (const TCHAR *);
+//extern void console_out_f (const TCHAR *, ...);
+extern void console_flush (void);
+extern int console_get (TCHAR *, int);
+extern bool console_isch (void);
+extern TCHAR console_getch (void);
+extern void f_out (void *, const TCHAR *, ...);
+extern TCHAR* buf_out (TCHAR *buffer, int *bufsize, const TCHAR *format, ...);
+//extern void gui_message (const TCHAR *,...);
+extern int gui_message_multibutton (int flags, const TCHAR *format,...);
 #define write_log_err write_log
-void logging_init (void);
-FILE *log_open (const TCHAR *name, int append, int bootlog);
-void log_close (FILE *f);
+extern void logging_init (void);
+extern FILE *log_open (const TCHAR *name, int append, int bootlog, TCHAR*);
+extern void log_close (FILE *f);
+extern TCHAR *write_log_get_ts(void);
+extern bool is_console_open(void);
 
+extern bool use_long_double;
 
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
 
 #ifndef STATIC_INLINE
-#if __GNUC__ - 1 > 1 && __GNUC_MINOR__ - 1 >= 0
+#if __GNUC__ - 1 > 2 || (__GNUC__ - 1 == 2 && __GNUC_MINOR__ - 1 >= 0)
 #define STATIC_INLINE static __inline__ __attribute__ ((always_inline))
 #define NOINLINE __attribute__ ((noinline))
 #define NORETURN __attribute__ ((noreturn))
@@ -504,6 +522,19 @@ void log_close (FILE *f);
 #define NORETURN
 #endif
 #endif
+/* Every Amiga hardware clock cycle takes this many "virtual" cycles.  This
+   used to be hardcoded as 1, but using higher values allows us to time some
+   stuff more precisely.
+   512 is the official value from now on - it can't change, unless we want
+   _another_ config option "finegrain2_m68k_speed".
+
+   We define this value here rather than in events.h so that gencpu.c sees
+   it.  */
+#define CYCLE_UNIT 512
+
+/* This one is used by cfgfile.c.  We could reduce the CYCLE_UNIT back to 1,
+   I'm not 100% sure this code is bug free yet.  */
+#define OFFICIAL_CYCLE_UNIT 512
 
 /*
  * You can specify numbers from 0 to 5 here. It is possible that higher
@@ -527,15 +558,21 @@ void log_close (FILE *f);
 /* Else, if using SDL, try SDL's endian functions. */
 # ifdef USE_SDL
 #  include <SDL_endian.h>
-#  define bswap_16(x) SDL_Swap16(x)
-#  define bswap_32(x) SDL_Swap32(x)
+#  ifndef bswap_16
+#    define bswap_16(x) SDL_Swap16(x)
+#  endif
+#  ifndef bswap_32
+#    define bswap_32(x) SDL_Swap32(x)
+#  endif
 # else
 /* Otherwise, we'll roll our own. */
-#  define bswap_16(x) (((x) >> 8) | (((x) & 0xFF) << 8))
-#  define bswap_32(x) (((x) << 24) | (((x) << 8) & 0x00FF0000) | (((x) >> 8) & 0x0000FF00) | ((x) >> 24))
+#  ifndef bswap_16
+#    define bswap_16(x) (((x) >> 8) | (((x) & 0xFF) << 8))
+#  endif
+#  ifndef bswap_32
+#    define bswap_32(x) (((x) << 24) | (((x) << 8) & 0x00FF0000) | (((x) >> 8) & 0x0000FF00) | ((x) >> 24))
+#  endif
 # endif
-#endif
-
 #endif
 
 #ifndef __cplusplus
@@ -545,6 +582,12 @@ void log_close (FILE *f);
 #define xfree(T) free(T)
 #define xrealloc(T, TP, N) realloc(TP, sizeof (T) * (N))
 
+#if 0
+extern void *xmalloc (size_t);
+extern void *xcalloc (size_t, size_t);
+extern void xfree (const void*);
+#endif
+
 #else
 
 #define xmalloc(T, N) static_cast<T*>(malloc (sizeof (T) * (N)))
@@ -553,3 +596,13 @@ void log_close (FILE *f);
 #define xfree(T) free(T)
 
 #endif
+
+#define DBLEQU(f, i) (abs ((f) - (i)) < 0.000001)
+
+#ifdef HAVE_VAR_ATTRIBUTE_UNUSED
+#define NOWARN_UNUSED(x) __attribute__((unused)) x
+#else
+#define NOWARN_UNUSED(x) x
+#endif
+
+#endif /* UAE_SYSDEPS_H */
